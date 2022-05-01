@@ -40,9 +40,9 @@ class Chain:
                 if(tx_count != 1):
                     print("--------------------------------------")
                 print("Transaction", tx_count)
-                print("TX Signature", tx.signature)
-                print("TX Sender", tx.sender)
-                print("TX Content", tx.content)
+                print("TX Signature", tx.hashed_content.signature)
+                print("TX Sender", tx.hashed_content.signed_content.from_ac)
+                print("TX Content", tx.hashed_content.signed_content.to_ac)
                 print("TX HASH", tx.hash)
                 print()
             print("--------- END OF TRANSACTIONS ---------")

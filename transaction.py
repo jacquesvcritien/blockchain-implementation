@@ -2,21 +2,29 @@ import hashlib
 import json
 import ecdsa
 import base64
+from txHashedContent import TxHashedContent 
 
 class Transaction:
     def __init__(self, from_user, to_user):
-        self.content = {
-            "from" : from_user,
-            "to" : to_user
-        }
+        self.hashed_content = TxHashedContent(from_user, to_user)
         self.hash = ""
-        self.signature = ""
+
+    @classmethod
+    def load(cls, hashed_content, hash):
+        #init tx
+        new_tx = cls(hashed_content.signed_content.from_ac, hashed_content.signed_content.to_ac)
+        #fill hashed content signature
+        new_tx.hashed_content.signature = hashed_content.signature
+        #fill hash
+        new_tx.hash = hash
+
+        return new_tx
 
     #function to calculate hash
     def calculate_hash_sign(self, wallet):
 
-        #set to json string
-        payload = json.dumps(self.content)
+        #stringify signed content of tx
+        payload = json.dumps(self.hashed_content.signed_content.get_signed_content())
 
         # #hash the payload
         # content_hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
@@ -25,33 +33,24 @@ class Transaction:
         priv_key = bytes.fromhex(wallet.private_key)
         sk = ecdsa.SigningKey.from_string(priv_key, curve=ecdsa.SECP256k1)
 
-        #add sender
-        self.sender = wallet.public_key
-
         #add signature to content
-        self.signature = sk.sign(payload.encode('utf-8')).hex()
-        tx = {
-            "signature": self.signature,
-            "content":  payload,
-            "sender": self.sender
-        }
+        self.hashed_content.signature = sk.sign(payload.encode('utf-8')).hex()
+        #get hashed content
+        tx = self.hashed_content.get_hashed_content()
         
         #set to json string
         payload = json.dumps(tx)
         #hash the payload
         self.hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
-        print("TX hash", self.hash)
+        # print("TX hash", self.hash)
         
-    def verify_tx(self):
+    def verify(self):
 
         #verify tx hash to make sure signature did not change
         tx_hash = self.hash
 
-        tx = {
-            "signature": self.signature,
-            "content":  json.dumps(self.content),
-            "sender": self.sender
-        }
+        #get hashed content
+        tx = self.hashed_content.get_hashed_content()
 
         #calculate hash
         tx_payload = json.dumps(tx)
@@ -66,24 +65,23 @@ class Transaction:
         vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(self.sender), curve=ecdsa.SECP256k1)
        
         try: 
-            #get content as json string
-            content_json = json.dumps(self.content)
+            #get signed content as json string
+            content_json = json.dumps(self.hashed_content.signed_content.get_signed_content)
 
             #verify with signature       
             vk.verify(bytes.fromhex(self.signature), content_json.encode("utf-8"))
         except:
             #ensure signature is verified
             print("TX's signature cannot be verified")
-            return
+            return False
         
-        print("TX verified successful")
+        print("TX verified successful") 
+        return True
 
     #returns a json representation
     def to_json(self):
         return {
-            "signature": self.signature,
-            "content":  self.content,
-            "sender": self.sender,
-            "hash": self.hash
+            "hash": self.hash,
+            "hashedContent": self.hashed_content.get_hashed_content()
         }
 

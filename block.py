@@ -1,20 +1,30 @@
 import time
 import json
-from helper_utils import get_needed_hash_substring
 from helper_utils import get_hash
-from hashedContent import HashedContent 
+from blockHashedContent import BlockHashedContent 
 from datetime import datetime
+import config as config
 
-NEEDED_ZEROS = 5
 
 class Block:
     def __init__(self, prev_hash):
-        self.hashed_content = HashedContent(prev_hash)
-        self.hash = {}
+        self.hashed_content = BlockHashedContent(prev_hash)
+        self.hash = ""
+
+    @classmethod
+    def load(cls, hashed_content, hash):
+        new_block = cls(hashed_content.prev_hash)
+        new_block.hashed_content = hashed_content
+        new_block.hash = hash
+        return new_block
 
     #function to increase nonce
     def increase_nonce(self):
         self.hashed_content.nonce += 1
+
+    #function to reset nonce
+    def reset_nonce(self):
+        self.hashed_content.nonce = 0
 
     #function to calculate hash of block
     def calculate_hash(self):
@@ -23,29 +33,49 @@ class Block:
         self.hashed_content.timestamp = datetime.now()
 
         #get content
+        content = self.hashed_content.get_hashed_content()
+        payload = json.dumps(content)
+
+        #calculate hash
+        self.hash = get_hash(payload)
+
+    #function to verify block
+    def verify(self):
+
+        #get content
         content = self.hashed_content.get_content()
         payload = json.dumps(content)
 
-        #hash the payload
-        content_hash = get_hash(payload)
+        #calculate hash
+        recalculated_hash = get_hash(payload)
 
-        #start timer
-        start_time = time.time()
+        #if hash does not match
+        if recalculated_hash != self.hash:
+            print("Block cannot be verified - hash does not match")
+            return False
 
-        #needed hash substring not in content hash
-        while(not content_hash.startswith(get_needed_hash_substring(NEEDED_ZEROS))):
-            #increase nonce
-            self.increase_nonce()
+        #check transactions
+        for tx in self.hashed_content.transactions:
+            #first verify hash
+            hash_verified = tx.verify()
 
-            #get content again
-            payload = json.dumps(content)
-            content = self.hashed_content.get_content()
+            #if not verified
+            if not hash_verified:
+                print("TX Hash failed to be verified")
+                return False
 
-            #rehash and test again
-            content_hash = get_hash(payload)
-            # print("Nonce", self.hashed_content.nonce)
-            # print("Generated hash", content_hash)
+            #get from 
+            from_ac = tx.hashed_content.signed_content.from_ac
+            to_ac = tx.hashed_content.signed_content.to_ac
+            #check balance
+            transfer_allowed=self.state.database.check_transfer(from_ac, to_ac)
 
-        print("Found hash", content_hash)
-        print("--- %s seconds ---" % (time.time() - start_time))
-        self.hash = content_hash
+            if not transfer_allowed:
+                print("TX Transfer not allowed - sender out of funds")
+                return False
+
+        #if all transactions passed, verify block
+        return True
+
+    
+
