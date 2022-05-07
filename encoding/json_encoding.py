@@ -23,11 +23,11 @@ def request_block(hash):
     return json.dumps(payload)
 
 #function to create JSON message for block message
-def block_payload(block):
+def block_content(block):
     payload = {
         "block": {
             "hash": block.hash,
-            "hashedContent": block.hashedContent.get_hashed_content()
+            "hashedContent": block.hashed_content.get_hashed_content()
         }
     }
     return json.dumps(payload)

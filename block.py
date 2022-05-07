@@ -13,8 +13,8 @@ class Block:
 
     @classmethod
     def load(cls, hashed_content, hash):
-        new_block = cls(hashed_content.prev_hash)
-        new_block.hashed_content = hashed_content
+        new_block = cls(hashed_content["prev_hash"])
+        new_block.hashed_content = BlockHashedContent.load(hashed_content)
         new_block.hash = hash
         return new_block
 
@@ -30,7 +30,7 @@ class Block:
     def calculate_hash(self):
 
         #set date
-        self.hashed_content.timestamp = datetime.now()
+        self.hashed_content.timestamp = int(round(time.time() * 1000))
 
         #get content
         content = self.hashed_content.get_hashed_content()
@@ -40,10 +40,10 @@ class Block:
         self.hash = get_hash(payload)
 
     #function to verify block
-    def verify(self):
+    def verify(self, database):
 
         #get content
-        content = self.hashed_content.get_content()
+        content = self.hashed_content.get_hashed_content()
         payload = json.dumps(content)
 
         #calculate hash
@@ -68,7 +68,7 @@ class Block:
             from_ac = tx.hashed_content.signed_content.from_ac
             to_ac = tx.hashed_content.signed_content.to_ac
             #check balance
-            transfer_allowed=self.state.database.check_transfer(from_ac, to_ac)
+            transfer_allowed=database.check_transfer(from_ac, to_ac)
 
             if not transfer_allowed:
                 print("TX Transfer not allowed - sender out of funds")

@@ -2,8 +2,8 @@
 import sqlite3
 
 class Database:
-    def __init__(self):
-        self.database = sqlite3.connect('blockchain.db', check_same_thread=False)
+    def __init__(self, port):
+        self.database = sqlite3.connect('dbs/'+str(port)+'_db.db', check_same_thread=False)
         self.cursor = self.database.cursor()
 
         #create tables if they do not exist
@@ -66,7 +66,7 @@ class Database:
     #function to check if a transfer is possible
     def check_transfer(self, from_ac, to, actual=True):
         #check if the sender has enough balance
-        if self.get_balance(from_ac, actual) < 1 and sender != "0":
+        if self.get_balance(from_ac, actual) < 1 and from_ac != "0":
             return False
 
         return True

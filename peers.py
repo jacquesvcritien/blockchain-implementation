@@ -5,7 +5,7 @@ nodes = [
     },
     {
         "ip":"127.0.0.1",
-        "port":3013
+        "port":3011
     },
 ]
 
@@ -57,11 +57,14 @@ class Peers:
                 self.add_to_peers(addr[0], addr[1])
 
             #process msg and get reply to send
-            reply = protocol.process_message_bytes(data, self)
+            replies = protocol.process_message_bytes(data, self)
 
-            #if there is a reply
-            if reply:
-                self.broadcast_message_bytes(reply)
+            #for each reply
+            if replies:
+                for reply in replies:
+                    #if there is a reply
+                    if reply:
+                        self.broadcast_message_bytes(reply)
 
     def discover_other_nodes(self):
         print("Discovering")

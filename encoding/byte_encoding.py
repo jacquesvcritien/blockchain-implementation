@@ -11,7 +11,7 @@ def request_block(hash):
     return "TODO"
 
 #function to create BYTE message for block message
-def block_payload(block):
+def block_content(block):
     return "TODO"
 
 #function to create empty BYTE message

@@ -16,6 +16,34 @@ class Chain:
         else:
             return self.blocks[blocks_len-1].hash
 
+    #get hash of block
+    def get_block_hash(self, block_number):
+        #if block does not exist
+        if len(self.blocks) < block_number:
+            return -1
+
+        return self.blocks[block_number-1].hash
+
+    #get block with a specific previous hash
+    def get_block_with_prev_hash(self, prev_hash):
+
+        index = 0
+        #loop through each block
+        for block in self.blocks:
+            #if block has the passed in previous hash return the block and its index
+            if block.hashed_content.prev_hash == prev_hash:
+                return block, index
+
+            #increment index
+            index += 1
+
+        return None, -1
+
+    #replace block with given index 
+    def replace_block(self, index, block):
+        self.blocks[index] = block
+
+        #TODO: Revert old balances of bad block
 
     #function to print chain
     def print_chain(self):

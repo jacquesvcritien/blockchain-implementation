@@ -1,6 +1,7 @@
 import hashlib
 import json
 import ecdsa
+import config as config
 import base64
 from txHashedContent import TxHashedContent 
 
@@ -27,21 +28,21 @@ class Transaction:
         payload = json.dumps(self.hashed_content.signed_content.get_signed_content())
 
         # #hash the payload
-        # content_hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+        # content_hash = hashlib.sha256(payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
         
         #get signing key
         priv_key = bytes.fromhex(wallet.private_key)
         sk = ecdsa.SigningKey.from_string(priv_key, curve=ecdsa.SECP256k1)
 
         #add signature to content
-        self.hashed_content.signature = sk.sign(payload.encode('utf-8')).hex()
+        self.hashed_content.signature = sk.sign(payload.encode(config.BYTE_ENCODING_TYPE)).hex()
         #get hashed content
         tx = self.hashed_content.get_hashed_content()
         
         #set to json string
         payload = json.dumps(tx)
         #hash the payload
-        self.hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+        self.hash = hashlib.sha256(payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
         # print("TX hash", self.hash)
         
     def verify(self):
@@ -54,7 +55,7 @@ class Transaction:
 
         #calculate hash
         tx_payload = json.dumps(tx)
-        hash_to_verify = hashlib.sha256(tx_payload.encode('utf-8')).hexdigest()
+        hash_to_verify = hashlib.sha256(tx_payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
         
         #ensure hash matches content
         if(tx_hash != hash_to_verify):
@@ -62,20 +63,22 @@ class Transaction:
             return
 
         #load verifying key
-        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(self.sender), curve=ecdsa.SECP256k1)
+        #if sender is 0, load private key of receiver, otherwise of sender
+        sender = self.hashed_content.signed_content.from_ac
+        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(sender), curve=ecdsa.SECP256k1) if sender != "0" else ecdsa.VerifyingKey.from_string(bytes.fromhex(self.hashed_content.signed_content.to_ac), curve=ecdsa.SECP256k1)
        
         try: 
             #get signed content as json string
-            content_json = json.dumps(self.hashed_content.signed_content.get_signed_content)
+            content_json = json.dumps(self.hashed_content.signed_content.get_signed_content())
 
             #verify with signature       
-            vk.verify(bytes.fromhex(self.signature), content_json.encode("utf-8"))
+            vk.verify(bytes.fromhex(self.hashed_content.signature), content_json.encode("utf-8"))
         except:
             #ensure signature is verified
             print("TX's signature cannot be verified")
             return False
         
-        print("TX verified successful") 
+        print("Block verified successful") 
         return True
 
     #returns a json representation

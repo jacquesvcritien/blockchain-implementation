@@ -3,6 +3,7 @@ from state import State
 from helper_utils import write_to_file
 from helper_utils import get_module_fn
 import config as config
+from block import Block
 import json
 
 class Protocol:
@@ -13,108 +14,114 @@ class Protocol:
     def process_message_bytes(self, message, peers):
 
         #check command size
-        if message[0] != ascii(2):
+        if chr(message[0]) != '2':
             print("The command must start with ascii character 2")
             return
 
         #check last character
-        if message[len(message)-1] != ascii(3):
-            print("The last character in the command must end with ascii character 3")
+        if chr(message[len(message)-1]) != '3':
+            print("The last character in the command must end with ascii character 3", message)
+            if chr(message[3]) == "h":
+                size = message[1:3]
+                size = int.from_bytes(size, byteorder='big')
             return
         
         #get msg len from second and third byte
         size = message[1:3]
+        size = int.from_bytes(size, byteorder='big')
 
         #extract command
         cmd = message[3:-1]
 
         #if command is longer than size
         if len(cmd) != size:
-            print("The command is longer than the specified bytes")
+            print("The command is longer than the specified bytes", size, len(cmd), message[1:3])
             return
 
         #get first letter
-        first_letter = chr(message[2])
+        first_letter = chr(cmd[0])
 
         #if got get block count
         if first_letter == 'a':
-            reply_msg = __handle_get_block_count()
-            return reply_msg
+            reply_msg = self.__handle_get_block_count()
+            return [reply_msg]
         #if got block count
         if first_letter == 'c':
-            reply_msg = __handle_block_count_response(cmd)
-            return reply_msg
+            reply_msg = self.__handle_block_count_response(cmd)
+            return [reply_msg]
         #if got get block hashes
         elif first_letter == 'b':
-            reply_msg = __handle_get_block_hashes()
-            return reply_msg
+            reply_msg = self.__handle_get_block_hashes()
+            return [reply_msg]
         #if got get block hashes
         elif first_letter == 'h':
-            reply_msg = __handle_block_hashes_response(cmd)
-            return reply_msg
+            reply_msgs = self.__handle_block_hashes_response(cmd)
+            return reply_msgs
         #if got request block
         elif first_letter == 'r':
-            reply_msg = __handle_request_block(cmd)
-            return reply_msg
+            reply_msg = self.__handle_request_block(cmd)
+            return [reply_msg]
         #if got new block
-        elif first_letter == 'z':
-            reply_msg = __handle_new_block(cmd)
-            return reply_msg
+        elif first_letter == 'z' or first_letter == 'x':
+            reply_msg = self.__handle_new_block(cmd)
+            return [reply_msg]
         #if got new tx
         if first_letter == 'n':
-            print("GOT NEW TX MSG", file=self.state.logFile)
-            self.state.logFile.flush()
-            #extract transaction number
-            trn = int.from_bytes(cmd[1:3], byteorder='big')
-            print("Got new transaction number", trn, file=self.state.logFile)
-            self.state.logFile.flush()
-            from_user = cmd[3:5].decode(config.BYTE_ENCODING_TYPE)
-            to_user = cmd[5:7].decode(config.BYTE_ENCODING_TYPE)
-            timestamp = int.from_bytes(cmd[7:11], byteorder='big')
-            approved = int.from_bytes(cmd[11:12], byteorder='big')
-            approve_tx = int.from_bytes(cmd[12:14], byteorder='big')
+            self.__handle_new_tx(cmd)
+            return [None]
+            # print("GOT NEW TX MSG", file=self.state.logFile)
+            # self.state.logFile.flush()
+            # #extract transaction number
+            # trn = int.from_bytes(cmd[1:3], byteorder='big')
+            # print("Got new transaction number", trn, file=self.state.logFile)
+            # self.state.logFile.flush()
+            # from_user = cmd[3:5].decode(config.BYTE_ENCODING_TYPE)
+            # to_user = cmd[5:7].decode(config.BYTE_ENCODING_TYPE)
+            # timestamp = int.from_bytes(cmd[7:11], byteorder='big')
+            # approved = int.from_bytes(cmd[11:12], byteorder='big')
+            # approve_tx = int.from_bytes(cmd[12:14], byteorder='big')
 
-            #if transaction number is more than next number, synchronise
-            if trn > len(self.state.transactions) + 1:
-                self.state.synchronize(self, peers)
+            # #if transaction number is more than next number, synchronise
+            # if trn > len(self.state.transactions) + 1:
+            #     self.state.synchronize(self, peers)
             
-            #if a new height
-            if (len(self.state.transactions)+1) == trn:
-                #append tx
-                new_tx = {
-                    "number": trn,
-                    "from_username": from_user,
-                    "to_username": to_user,
-                    "timestamp": timestamp,
-                    "approved": approved,
-                    "approve_tx": approve_tx
-                }
+            # #if a new height
+            # if (len(self.state.transactions)+1) == trn:
+            #     #append tx
+            #     new_tx = {
+            #         "number": trn,
+            #         "from_username": from_user,
+            #         "to_username": to_user,
+            #         "timestamp": timestamp,
+            #         "approved": approved,
+            #         "approve_tx": approve_tx
+            #     }
 
-                #add tx to state
-                self.state.transactions.append(new_tx)
-                self.state.local_tx_count += 1
-                self.state.network_tx_count = len(self.state.transactions)
-                #return okay
-                return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
-            #if height already exists
-            elif len(self.state.transactions) >= trn:
-                #if our stored tx is older, ignore this
-                if self.state.transactions[trn-1]["timestamp"] <= timestamp:
-                    #return fail
-                    return self.create_message_bytes("f".encode(config.BYTE_ENCODING_TYPE))
-                #if new transaction is older
-                else:
-                    #replace
-                    self.state.transactions[trn-1] = {
-                        "number": trn,
-                        "from_username": from_user,
-                        "to_username": to_user,
-                        "timestamp": timestamp,
-                        "approved": approved,
-                        "approve_tx": approve_tx
-                    }
-                    #return ok
-                    return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
+            #     #add tx to state
+            #     self.state.transactions.append(new_tx)
+            #     self.state.local_tx_count += 1
+            #     self.state.network_tx_count = len(self.state.transactions)
+            #     #return okay
+            #     return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
+            # #if height already exists
+            # elif len(self.state.transactions) >= trn:
+            #     #if our stored tx is older, ignore this
+            #     if self.state.transactions[trn-1]["timestamp"] <= timestamp:
+            #         #return fail
+            #         return self.create_message_bytes("f".encode(config.BYTE_ENCODING_TYPE))
+            #     #if new transaction is older
+            #     else:
+            #         #replace
+            #         self.state.transactions[trn-1] = {
+            #             "number": trn,
+            #             "from_username": from_user,
+            #             "to_username": to_user,
+            #             "timestamp": timestamp,
+            #             "approved": approved,
+            #             "approve_tx": approve_tx
+            #         }
+            #         #return ok
+            #         return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
 
 
     #function to get block count from neighbours
@@ -160,7 +167,7 @@ class Protocol:
         return self.create_message_bytes(message)
 
     #function to create message for request block message
-    def __request_block_payload(hash):
+    def __request_block_payload(self, hash):
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "request_block")
         return fn(hash)
@@ -190,10 +197,34 @@ class Protocol:
 
         #create message
         msg = bytearray()
+        # msg += ascii(2)
         msg += ascii(2).encode(config.BYTE_ENCODING_TYPE)
         msg += msg_length
         msg += message
         msg += ascii(3).encode(config.BYTE_ENCODING_TYPE)
+        # msg += ascii(3)
+
+        return msg
+
+    #function to create a message to be sent
+    def create_message_bytes_test(self, message):
+        #calculate message length
+        msg_length = len(message)
+        print("MSG LEN", msg_length)
+        #switch to 2 bytes
+        msg_length = msg_length.to_bytes(2, byteorder='big')
+        print("MSG LEN", msg_length)
+
+        print("MSG LEN PARSED",int.from_bytes(msg_length, byteorder='big'))
+
+        #create message
+        msg = bytearray()
+        # msg += ascii(2)
+        msg += ascii(2).encode(config.BYTE_ENCODING_TYPE)
+        msg += msg_length
+        msg += message
+        msg += ascii(3).encode(config.BYTE_ENCODING_TYPE)
+        # msg += ascii(3)
 
         return msg
 
@@ -240,7 +271,7 @@ class Protocol:
         #add initial character
         highest_block_res += "c".encode(config.BYTE_ENCODING_TYPE)
         #get number of blocks
-        block_count = state.get_block_count()
+        block_count = self.state.get_block_count()
         #get payload
         payload = self.__get_block_count_res_payload(block_count)
         #append payload to message
@@ -254,16 +285,16 @@ class Protocol:
         #write log
         write_to_file("GOT BLOCK COUNT RESPONSE MSG", self.state.logFile)
 
-        payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
+        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
         #change to json
-        payload_received = json.load(payload_received)
+        payload_received = json.loads(cmd[1:len(cmd)])
 
-        #get blockc ount
-        self.state.local_block_count = payload_received["blocks"]
+        #get block count
+        block_count_received = payload_received["blocks"]
 
         #if block count received is bigger than local block count
-        if block_count > self.state.local_block_count:
-            self.state.network_block_count = block_count
+        if block_count_received > self.state.local_block_count:
+            self.state.network_block_count = block_count_received
             #prepare message to get block hashes
             get_block_hashes_msg = self.get_block_hashes()
             return get_block_hashes_msg
@@ -286,7 +317,7 @@ class Protocol:
         #add initial character
         block_hashes_res += "h".encode(config.BYTE_ENCODING_TYPE)
         #get block hashes
-        hashes = state.get_block_hashes()
+        hashes = self.state.get_block_hashes()
         #get payload
         payload = self.__get_block_hashes_res_payload(hashes)
         #append payload to message
@@ -306,21 +337,30 @@ class Protocol:
         #write log
         write_to_file("GOT BLOCK HASHES RESPONSE MSG", self.state.logFile)
 
-        payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
+        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
         #change to json
-        payload_received = json.load(payload_received)
+        payload_received = json.loads(cmd[1:len(cmd)])
 
-        #get blockc ount
-        self.state.local_block_count = payload_received["blocks"]
+        #get block count
+        received_hashes = payload_received["hashes"]
 
-        #if block count received is bigger than local block count
-        if block_count > self.state.local_block_count:
-            self.state.network_block_count = block_count
-            #prepare message to get block hashes
-            get_block_hashes_msg = self.get_block_hashes()
-            return get_block_hashes_msg
+        #init messages to send
+        messages_to_send = []
 
-        return None
+        #if number of block hashes received is bigger than local block count
+        if len(received_hashes) > self.state.local_block_count:
+            index = 1
+            #for each hash
+            for hash in received_hashes:
+                #if block hash does not match our block hash, request block
+                if self.state.chain.get_block_hash(index) != hash:
+                    print("Requesting hash", hash)
+                    messages_to_send.append(self.request_block(hash))
+
+                #increment counter
+                index += 1
+
+        return messages_to_send
 
     #function to handle request block message
     def __handle_request_block(self, cmd):
@@ -328,18 +368,17 @@ class Protocol:
         write_to_file("GOT REQUEST BLOCK MSG", self.state.logFile)
 
         payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        print("received_payload", payload_received)
         #change to json
-        payload_received = json.load(payload_received)
+        payload_received = json.loads(cmd[1:len(cmd)])
         #get hash
         hash = payload_received["hash"]
         
         #prepare message to return
         request_block_res = bytearray()
         #add initial character
-        request_block_res += "b".encode(config.BYTE_ENCODING_TYPE)
+        request_block_res += "x".encode(config.BYTE_ENCODING_TYPE)
         #get block hashes
-        block = state.get_block(hash)
+        block = self.state.get_block(hash)
         #get payload
         payload = self.__block_payload(block)
         #append payload to message
@@ -354,31 +393,77 @@ class Protocol:
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "block_content")
         return fn(block)
 
+    #function to send a block
+    def send_block(self, letter, block):
+        #prepare message to send
+        block_msg = bytearray()
+        #add initial character
+        block_msg += letter.encode(config.BYTE_ENCODING_TYPE)
+        #get payload
+        payload = self.__block_payload(block)
+        #append payload to message
+        block_msg += payload.encode(config.BYTE_ENCODING_TYPE)
+        
+        #create msg
+        msg_to_send = self.create_message_bytes(block_msg)
+        return msg_to_send
+
     #function to handle new block message
     def __handle_new_block(self, cmd):
         #write log
         write_to_file("GOT NEW BLOCK MSG", self.state.logFile)
 
-        payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        print("received new block", payload_received)
+        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
         #change to json
-        payload_received = json.load(payload_received)
+        payload_received = json.loads(cmd[1:len(cmd)])["block"]
 
-        #initialise block
-        block = Block.load(payload_received["hashedContent"], payload_received["hash"])
-        #verify block
-        verified = block.verify()
+        #check if previous hash of new block does not match current head hash
+        new_block_prev_hash = payload_received["hashedContent"]["prev_hash"]
+        #get block with the same prev hash
+        our_block, our_index = self.state.chain.get_block_with_prev_hash(new_block_prev_hash)
 
-        #if not verified
-        if not verified:
-            print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
-            return
+        #this is a flag which holds whether the received block is older than our block with the same prev hash
+        older_block = False
 
-        #perform block transfers
-        self.state.perform_transfers(block)
+        #if not a new block
+        if our_index != -1:
+            #if new hash does not match, check if received block is older
+            if payload_received["hash"] != our_block.hash:
+                #if our block is older, hence the original
+                if our_block.hashed_content.timestamp < payload_received["hashedContent"]["timestamp"]:
+                    print("We found an older block on our chain with the same previous hash", new_block_prev_hash)
+                    #send our block to the chain
+                    return self.send_block("x", our_block)
+                #otherwise we need to verify
+                else:
+                    older_block = True
+                    print("Need to check hash", payload_received["hash"])
 
-        #add block to chain
-        self.state.chain.add_block(block)
+        #if it is a completely new block or an older block which needs to be verified
+        if older_block or our_block == None:
+            #initialise block
+            block = Block.load(payload_received["hashedContent"], payload_received["hash"])
+            #verify block
+            verified = block.verify(self.state.database)
+
+            #if not verified
+            if not verified:
+                print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
+                return
+
+            #perform block transfers
+            self.state.perform_transfers(block)
+
+            #if is a completely new block
+            if our_index == -1:
+                #add block to chain
+                self.state.insert_block(block)
+            #otherwise we need to replace the block with the same previous hash at the index obtained
+            else:
+                print("Replacing block with hash", block.hash)
+                self.state.chain.replace_block(index, block)
+
+        return None
 
     #function to handle new transaction message
     def __handle_new_tx(self, cmd):

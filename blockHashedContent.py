@@ -11,17 +11,16 @@ class BlockHashedContent:
     
     @classmethod
     def load(cls, block):
-        new_hashed_content = cls(block.prev_hash)
-        new_hashed_content.nonce = block.nonce
-        new_hashed_content.prev_hash = block.prev_hash
-        new_hashed_content.timestamp = block.timestamp
-        new_hashed_content.transactions = []
+        new_hashed_content = cls(block["prev_hash"])
+        new_hashed_content.nonce = block["nonce"]
+        new_hashed_content.prev_hash = block["prev_hash"]
+        new_hashed_content.timestamp = block["timestamp"]
+        new_hashed_content.tarnsactions = []
 
         #for each transaction
-        for tx in block.transactions:
-            signed_content = TxSignedContent(tx.hashedContent.from_ac, tx.hashedContent.from_ac)
-            hashed_content = TxHashedContent(signed_content, tx.hashedContent.signature)
-            new_tx = Transaction(hashed_content, hashed_content)
+        for tx in block["transactions"]:
+            hashed_content = TxHashedContent.load(tx["hashedContent"]["from_ac"], tx["hashedContent"]["to_ac"], tx["hashedContent"]["signature"])
+            new_tx = Transaction.load(hashed_content, tx["hash"])
             new_hashed_content.transactions.append(new_tx)
 
         return new_hashed_content
@@ -44,7 +43,7 @@ class BlockHashedContent:
         return {
             "nonce": self.nonce,
             "prev_hash": self.prev_hash,
-            "timestamp": self.nonce,
+            "timestamp": self.timestamp,
             "transactions": self.get_txs_json()
         }
 

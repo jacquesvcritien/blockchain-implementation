@@ -3,6 +3,7 @@ import config as config
 import time
 import json
 from helper_utils import get_module_fn
+from helper_utils import write_to_file
 
 class State:
     def __init__(self, port, chain):
@@ -18,7 +19,7 @@ class State:
 
         #init database
         Database = get_module_fn("models."+config.DB_MODEL+".db_model", "Database")
-        self.database = Database()
+        self.database = Database(port)
 
         self.logFile = open('logs/log_'+str(port)+'.txt', 'w')
 
@@ -27,24 +28,7 @@ class State:
         get_blocks_count_msg = protocol.get_block_count()
         peers.broadcast_message_bytes(get_blocks_count_msg)
 
-        write_to_file("Current peers "+str(len(peers.peers)), self.state.logFile)
-        write_to_file("Current Local txs "+str(self.local_tx_count), self.state.logFile)
-        write_to_file("Current Network txs "+str(self.network_tx_count), self.state.logFile)
-
-        # txs_behind = self.network_tx_count - self.local_tx_count
-        # get_blocks_hashes_msg = protocol.get_block_hashes()
-        # peers.broadcast_message_bytes(get_blocks_hashes_msg)
-
-        # for x in range(txs_behind):
-        #     print("Synchronizing", file=self.logFile)
-        #     self.logFile.flush()
-        #     #obtain get transaction command
-        #     get_tx_cmd = protocol.get_tx(self.local_tx_count+x+1)
-        #     print("Getting tx", self.local_tx_count+x+1, file=self.logFile)
-        #     self.logFile.flush()
-        #     self.logFile.flush()
-        #     peers.broadcast_message_bytes(get_tx_cmd)
-        #     # self.local_tx_count += 1
+        write_to_file("Syncing and asking for block count", self.logFile)
 
     #function to read a username
     def read_username(self):
@@ -71,12 +55,21 @@ class State:
 
     #function to get the block count
     def get_block_count(self):
-        
         #if there are no blocks
         if len(self.chain.blocks) == 0:
             return 0
 
         return len(self.chain.blocks)
+
+    #function to get the block by hash
+    def get_block(self, hash):
+        #loop through each block
+        for block in self.chain.blocks:
+            #if block matches, return hash
+            if(block.hash == hash):
+                return block
+
+        return None
 
     #function to get the block hashes
     def get_block_hashes(self):
@@ -84,11 +77,27 @@ class State:
         block_hashes = []
 
         #loop through blocks
-        for block in self.blocks:
+        for block in self.chain.blocks:
             #append hash
             block_hashes.append(block.hash)
 
         return block_hashes
+
+    #function to get latest hash
+    def get_latest_hash(self):
+        return self.chain.blocks[-1].hash if len(self.chain.blocks) > 0 else "0"
+
+    #function to insert block
+    def insert_block(self, block):
+        #increment local count
+        self.local_block_count += 1
+
+        #if local block count is more than network, increase network
+        if(self.local_block_count > self.network_block_count):
+            self.network_block_count = self.local_block_count
+
+        #add block to chain
+        self.chain.add_block(block)
 
     # #get unapproved txs
     # def get_unapproved_txs(self):
@@ -179,4 +188,8 @@ class State:
             to_ac = tx.hashed_content.signed_content.to_ac
             #make transfer
             self.database.transfer(from_ac, to_ac)
+
+    #function to check if synced
+    def is_synced(self):
+        return self.local_block_count == self.network_block_count
 

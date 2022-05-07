@@ -77,7 +77,16 @@ def init():
     #init wallet
     wallet = Wallet(state.user_initials)
     #init miner
-    miner = Miner(wallet, chain, state)
+    miner = Miner(wallet, chain, state, protocol, peers)
+
+    #sync every 5 seconds
+    syncing_check = threading.Thread(target=check_sync)
+    syncing_check.start()
+
+    listen_UDP = threading.Thread(target=peers.process_incoming_messages_bytes, args=[protocol])
+    listen_UDP.start()
+
+    time.sleep(5)
 
     mining = threading.Thread(target=miner.run, args=[])
     mining.start()
@@ -90,8 +99,7 @@ def init():
 
 
 
-    # listen_UDP = threading.Thread(target=peers.process_incoming_messages_bytes, args=[protocol])
-    # listen_UDP.start()
+
 
     # #ask for highest tx num
     # highest_tx_msg = protocol.get_highest_tx_num()
@@ -99,9 +107,7 @@ def init():
 
     # time.sleep(10)
 
-    #sync every 5 seconds
-    syncing_check = threading.Thread(target=check_sync)
-    syncing_check.start()
+
     
 
 init()
