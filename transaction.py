@@ -78,7 +78,7 @@ class Transaction:
             print("TX's signature cannot be verified")
             return False
         
-        print("Block verified successful") 
+        # print("Block verified successful") 
         return True
 
     #returns a json representation

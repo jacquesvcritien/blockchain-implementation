@@ -31,7 +31,7 @@ class Peers:
     def process_incoming_messages(self, protocol):
         while True:
             # read msg
-            data, addr = self.socket.recvfrom(1024)
+            data, addr = self.socket.recvfrom(65535)
             msg_received = data.decode('utf-8')
             # print("RECEIVED: "+msg_received+" FROM "+str(addr[0])+":"+str(addr[1]))
             #check in peers and if not there add it
@@ -49,7 +49,7 @@ class Peers:
     def process_incoming_messages_bytes(self, protocol):
         while True:
             # read msg
-            data, addr = self.socket.recvfrom(1024)
+            data, addr = self.socket.recvfrom(65535)
             # print("RECEIVED: "+str(data)+" FROM "+str(addr[0])+":"+str(addr[1]))
             #check in peers and if not there add it
             found = self.check_in_peers(addr[0], addr[1])

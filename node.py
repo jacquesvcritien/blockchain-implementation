@@ -12,7 +12,7 @@ from transaction import Transaction
 from miner import Miner
 from block import Block
 from chain import Chain
-
+from helper_utils import write_to_file
 
 if len(sys.argv) == 3:
     # Get "IP address of Server" and also the "port number" from argument 1 and argument 2
@@ -128,42 +128,39 @@ def show_help():
 
 #sends wbe
 def send_wbe():
-    username = ""
-    while len(username) != 2:
-        username = input("Enter username to send to: ").upper()
-        if len(username) != 2:
-            print("Username must be the initials (2 characters long)")
-        if username == state.user_initials:
-            print("Username must be different than yours")
-            username = ""
+    global state
+    global wallet
 
-    if get_balance() < 1:
+    recipient = ""
+    while len(recipient) != 128:
+        recipient = input("Enter address to send to: ").upper()
+        if len(recipient) != 128:
+            print("Username must be the initials (128 characters long)")
+        if recipient == wallet.public_key:
+            print("Username must be different than yours")
+            recipient = ""
+
+    if state.get_balance(wallet.public_key) < 1:
         print("Not enough balance")
         return
 
-    state.synchronize(protocol, peers)
+    # state.synchronize(protocol, peers)
         
     #get next tx number
-    next_tx_number = state.network_tx_count
-    print("Sending new tx "+str(next_tx_number+1), file=state.logFile)
-    state.logFile.flush()
+    # next_tx_number = state.network_tx_count
 
-    transaction = {
-        "number": next_tx_number+1,
-        "from_username": state.user_initials,
-        "to_username": username,
-        "timestamp": int(time.time()),
-        "approved": 1,
-        "approve_tx": 0
-    }
+    write_to_file("Sending new tx to "+recipient, state.logFile)
 
-    #add transaction
-    state.transactions.append(transaction)
-    state.local_tx_count += 1
-    state.network_tx_count += 1
+    #create tx 
+    new_tx = Transaction(wallet.public_key, recipient)
+    #sign tx
+    wallet.sign_tx(new_tx)
+
+    #add tx to state
+    state.transactions.append(new_tx)
 
     #generate tx msg
-    send_new_tx_msg = protocol.send_new_tx_bytes(transaction)
+    send_new_tx_msg = protocol.send_new_tx(new_tx)
     #send tx msg
     peers.broadcast_message_bytes(send_new_tx_msg)
 
@@ -279,16 +276,6 @@ def print_chain():
 
 def print_unapproved_txs():
     state.print_unapproved_txs()
-
-def get_balance():
-    balance = 0
-    for tx in state.transactions:
-        if tx["from_username"] == state.user_initials:
-            balance -= 1
-        elif tx["to_username"] == state.user_initials and tx["approved"] == 1:
-            balance += 1
-
-    return balance
 
 
 #function to handle user actions

@@ -70,7 +70,7 @@ class Chain:
                 print("Transaction", tx_count)
                 print("TX Signature", tx.hashed_content.signature)
                 print("TX Sender", tx.hashed_content.signed_content.from_ac)
-                print("TX Content", tx.hashed_content.signed_content.to_ac)
+                print("TX Receiver", tx.hashed_content.signed_content.to_ac)
                 print("TX HASH", tx.hash)
                 print()
             print("--------- END OF TRANSACTIONS ---------")

@@ -20,20 +20,26 @@ class Miner:
         #start timer
         start_time = time.time()
 
-        #reset mining balances
-        self.state.database.reset_mining_balances()
-
-        #if state transactions pool > previous block transactions, reset nonce
-        if(len(self.state.transactions) > len(block.hashed_content.transactions)):
-            print("Resetting nonce")
-            block.reset_nonce()
-
         #needed hash substring not in content hash
         while(not block.hash.startswith(get_needed_hash_substring(config.HASHING_CONSECUTIVE_ZEROS))):
+
+            #if state transactions pool > previous block transactions, reset nonce
+            if(len(self.state.transactions) > len(block.hashed_content.transactions)-1):
+                print("Resetting nonce")
+                for tx in self.state.transactions:
+                    print(tx.to_json())
+                #reset nonce
+                block.reset_nonce()
+                #reset txs
+                block.hashed_content.reset_txs()
+                #add mining_tx
+                block.hashed_content.add_transaction(self.current_mining_tx)
+                #add pending txs
+                block.hashed_content.add_pending_txs(self.state.transactions)
             
             #if not synced or block is found, halt mining
             if not self.state.is_synced() or self.state.local_block_count >= block_num_to_mine:
-                print("Node not synced")
+                # print("Node not synced")
                 return False
 
             #increase nonce 
@@ -41,13 +47,16 @@ class Miner:
             #calculate hash
             block.calculate_hash()
 
-        #empty state transaction pool
-        self.state.transactions = []
-
         write_to_file("Found hash "+block.hash+" for block "+str(len(self.chain.blocks)+1), self.logFile)
         write_to_file("--- "+str(time.time() - start_time)+" seconds ---", self.logFile)
 
-        return self.state.is_synced() and block_num_to_mine > self.state.local_block_count
+        if self.state.is_synced() and block_num_to_mine > self.state.local_block_count:
+            #clear pending txs
+            self.state.transactions = []
+            #reset mining balances
+            self.state.database.reset_mining_balances()
+            return True
+
 
 
     #function to mine
@@ -58,12 +67,15 @@ class Miner:
                 #get previous hash
                 prev_hash = self.chain.get_prev_hash()
 
+                #set state transactions to empty = 
+
                 #initialise a block
                 block = Block(prev_hash)
 
                 #generate a transaction for the receipt of the mining conpensation
-                new_tx = self.add_transaction()
-                block.hashed_content.add_transaction(new_tx)
+                self.current_mining_tx = self.add_transaction()
+                #add mining_tx
+                block.hashed_content.add_transaction(self.current_mining_tx)
 
                 #get block number to mine
                 block_num_to_mine = len(self.chain.blocks)+1

@@ -34,3 +34,7 @@ class Wallet:
 
     def get_public_key(self):
         return self.public_key
+
+    #function to sign a tx
+    def sign_tx(self, tx):
+        tx.calculate_hash_sign(self)

@@ -139,15 +139,8 @@ class State:
     #     self.write_txs_to_file()
 
     #calculates the balance of a user
-    def get_balance(username):
-        balance = 0
-        for tx in self.transactions:
-            if tx["from_username"] == username:
-                balance -= 1
-            elif tx["to_username"] == username and tx["approved"] == 1:
-                balance += 1
-
-        return balance
+    def get_balance(self, address):
+        return self.database.get_balance(address)
 
     #function to write to file
     def write_txs_to_file(self):

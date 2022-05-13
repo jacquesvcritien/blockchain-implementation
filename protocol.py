@@ -4,6 +4,8 @@ from helper_utils import write_to_file
 from helper_utils import get_module_fn
 import config as config
 from block import Block
+from transaction import Transaction
+from txHashedContent import TxHashedContent
 import json
 
 class Protocol:
@@ -66,7 +68,7 @@ class Protocol:
             reply_msg = self.__handle_new_block(cmd)
             return [reply_msg]
         #if got new tx
-        if first_letter == 'n':
+        if first_letter == 't':
             self.__handle_new_tx(cmd)
             return [None]
             # print("GOT NEW TX MSG", file=self.state.logFile)
@@ -202,6 +204,7 @@ class Protocol:
         msg += msg_length
         msg += message
         msg += ascii(3).encode(config.BYTE_ENCODING_TYPE)
+
         # msg += ascii(3)
 
         return msg
@@ -228,14 +231,29 @@ class Protocol:
 
         return msg
 
+    #function to create payload for send tx message
+    def __tx_payload(self, block):
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "tx_content")
+        return fn(block)
+
+    #function to send tx
     def send_new_tx(self, transaction):
-        #construct transaction message
-        trn = str(transaction["number"])[2:len(message)]
-        trtime = str(transaction["timestamp"])[2:len(message)]
-        new_tx_msg = "n" + trn + transaction["from_username"] + transaction["to_username"] + trtime
-        return create_message(new_tx_msg)
+        #prepare message to send
+        new_tx_msg = bytearray()
+        #add initial character
+        new_tx_msg += "t".encode(config.BYTE_ENCODING_TYPE)
+        #get payload
+        payload = self.__tx_payload(transaction)
+        #append payload to message
+        new_tx_msg += payload.encode(config.BYTE_ENCODING_TYPE)
+        
+        #create msg
+        msg_to_send = self.create_message_bytes(new_tx_msg)
+        return msg_to_send
 
     def send_new_tx_bytes(self, transaction):
+        
         #construct transaction message
         trn = transaction["number"]
         trtime = transaction["timestamp"]
@@ -285,12 +303,10 @@ class Protocol:
         #write log
         write_to_file("GOT BLOCK COUNT RESPONSE MSG", self.state.logFile)
 
-        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        #change to json
-        payload_received = json.loads(cmd[1:len(cmd)])
-
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_block_count_message")
         #get block count
-        block_count_received = payload_received["blocks"]
+        block_count_received = fn(cmd)
 
         #if block count received is bigger than local block count
         if block_count_received > self.state.local_block_count:
@@ -301,7 +317,7 @@ class Protocol:
 
         return None
 
-    #function to create JSON message for block count return
+    #function to create message for block count return
     def __get_block_count_res_payload(self, block_count):
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "get_block_count_res")
@@ -326,7 +342,7 @@ class Protocol:
         msg_to_send = self.create_message_bytes(block_hashes_res)
         return msg_to_send
 
-    #function to create JSON message for block hashes return
+    #function to create message for block hashes return
     def __get_block_hashes_res_payload(self, hashes):
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "get_block_hashes_res")
@@ -337,12 +353,10 @@ class Protocol:
         #write log
         write_to_file("GOT BLOCK HASHES RESPONSE MSG", self.state.logFile)
 
-        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        #change to json
-        payload_received = json.loads(cmd[1:len(cmd)])
-
-        #get block count
-        received_hashes = payload_received["hashes"]
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_block_hashes_message")
+        #get block hashes
+        received_hashes = fn(cmd)
 
         #init messages to send
         messages_to_send = []
@@ -367,11 +381,10 @@ class Protocol:
         #write log
         write_to_file("GOT REQUEST BLOCK MSG", self.state.logFile)
 
-        payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        #change to json
-        payload_received = json.loads(cmd[1:len(cmd)])
-        #get hash
-        hash = payload_received["hash"]
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_request_block_message")
+        #get block hashes
+        received_hashes = fn(cmd)
         
         #prepare message to return
         request_block_res = bytearray()
@@ -387,7 +400,7 @@ class Protocol:
         msg_to_send = self.create_message_bytes(request_block_res)
         return msg_to_send
 
-    #function to create JSON message for request block return
+    #function to create message for request block return
     def __block_payload(self, block):
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "block_content")
@@ -413,9 +426,10 @@ class Protocol:
         #write log
         write_to_file("GOT NEW BLOCK MSG", self.state.logFile)
 
-        # payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-        #change to json
-        payload_received = json.loads(cmd[1:len(cmd)])["block"]
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_new_block_message")
+        #get block hashes
+        payload_received = fn(cmd)
 
         #check if previous hash of new block does not match current head hash
         new_block_prev_hash = payload_received["hashedContent"]["prev_hash"]
@@ -467,8 +481,34 @@ class Protocol:
 
     #function to handle new transaction message
     def __handle_new_tx(self, cmd):
+        write_to_file("GOT NEW TX MSG", self.state.logFile)
+
         #get function from module
-        fn = get_module_fn("models."+config.DB_MODEL+".tx_handler", "handle_"+config.PAYLOAD_ENCODING+"_encoded_transaction")
-        return fn(block)
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_"+config.DB_MODEL+"_transaction")
+        payload_received = fn(cmd)
+
+        print("payload", payload_received)
+
+        #initialise transaction
+        hashed_content = TxHashedContent.load(payload_received["hashedContent"]["from_ac"], payload_received["hashedContent"]["to_ac"], payload_received["hashedContent"]["signature"])
+        tx = Transaction.load(hashed_content, payload_received["hash"])
+
+        #verify tx
+        verified = tx.verify()
+
+        #if tx cannot be verified
+        if not verified:
+            print("TX Hash failed to be verified")
+            return
+
+        #check if transfer can happen
+        transfer_allowed=self.state.database.check_transfer(tx.hashed_content.signed_content.from_ac, tx.hashed_content.signed_content.to_ac, False)
+
+        if not transfer_allowed:
+            print("TX Transfer not allowed - sender out of funds")
+            return
+            
+        #append tx to txs pool
+        self.state.transactions.append(tx)
 
 

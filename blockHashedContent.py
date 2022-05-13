@@ -29,6 +29,14 @@ class BlockHashedContent:
     def add_transaction(self, tx):
         self.transactions.append(tx)
 
+    #function to set transactions
+    def add_pending_txs(self, txs):
+        self.transactions += txs
+
+    #function to clear txs
+    def reset_txs(self):
+        self.transactions = []
+
     #returns a json representation of the txs in the block
     def get_txs_json(self):
         txs = []
