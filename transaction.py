@@ -65,7 +65,7 @@ class Transaction:
         #load verifying key
         #if sender is 0, load private key of receiver, otherwise of sender
         sender = self.hashed_content.signed_content.from_ac
-        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(sender), curve=ecdsa.SECP256k1) if sender != "0" else ecdsa.VerifyingKey.from_string(bytes.fromhex(self.hashed_content.signed_content.to_ac), curve=ecdsa.SECP256k1)
+        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(sender), curve=ecdsa.SECP256k1) if sender != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" else ecdsa.VerifyingKey.from_string(bytes.fromhex(self.hashed_content.signed_content.to_ac), curve=ecdsa.SECP256k1)
        
         try: 
             #get signed content as json string

@@ -12,7 +12,7 @@ class Chain:
         blocks_len = len(self.blocks)
         #if no blocks
         if(blocks_len==0):
-            return "0"
+            return "0000000000000000000000000000000000000000000000000000000000000000"
         else:
             return self.blocks[blocks_len-1].hash
 

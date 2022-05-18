@@ -50,7 +50,6 @@ class Peers:
         while True:
             # read msg
             data, addr = self.socket.recvfrom(65535)
-            # print("RECEIVED: "+str(data)+" FROM "+str(addr[0])+":"+str(addr[1]))
             #check in peers and if not there add it
             found = self.check_in_peers(addr[0], addr[1])
             if not found:

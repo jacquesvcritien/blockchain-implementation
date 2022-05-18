@@ -3,7 +3,7 @@ import sqlite3
 
 class Database:
     def __init__(self, port):
-        self.database = sqlite3.connect('dbs/'+str(port)+'_db.db', check_same_thread=False)
+        self.database = sqlite3.connect('dbs/'+str(port)+'_db_account.db', check_same_thread=False)
         self.cursor = self.database.cursor()
 
         #create tables if they do not exist
@@ -53,20 +53,20 @@ class Database:
     #function to execute a transfer if possible
     def transfer(self, from_ac, to, actual=True):
         #check if the sender has enough balance
-        if self.get_balance(from_ac, actual) < 1 and from_ac != "0":
+        if self.get_balance(from_ac, actual) < 1 and from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False
 
         #increase balance of receiver
         self.__increase_balance(to, actual)
 
         #decrease balance of sender
-        if(from_ac != "0"):
+        if(from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"):
             self.__decrease_balance(from_ac, actual)
 
     #function to check if a transfer is possible
     def check_transfer(self, from_ac, to, actual=True):
         #check if the sender has enough balance
-        if self.get_balance(from_ac, actual) < 1 and from_ac != "0":
+        if self.get_balance(from_ac, actual) < 1 and from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False
 
         return True

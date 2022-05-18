@@ -1,4 +1,5 @@
 from helper_utils import write_to_file
+import config as config
 import json
 
 #function to create JSON message for block count return
@@ -7,21 +8,24 @@ def get_block_count_res(block_count):
     payload = {
         "blocks": block_count
     }
-    return json.dumps(payload)
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
 
 #function to create JSON message for block hashes return
 def get_block_hashes_res(hashes):
     payload = {
         "hashes": hashes
     }
-    return json.dumps(payload)
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
 
 #function to create JSON message for request block
 def request_block(hash):
     payload = {
         "hash": hash
     }
-    return json.dumps(payload)
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
 
 #function to create JSON message for block message
 def block_content(block):
@@ -31,7 +35,8 @@ def block_content(block):
             "hashedContent": block.hashed_content.get_hashed_content()
         }
     }
-    return json.dumps(payload)
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
 
 #function to create empty JSON message
 def empty_content():
@@ -61,7 +66,7 @@ def handle_request_block_message(cmd):
     #get hash
     return payload_received["hash"]
     
-#function to handle nre block message
+#function to handle new block message
 def handle_new_block_message(cmd):
     #change to json
     return json.loads(cmd[1:len(cmd)])["block"]
@@ -74,7 +79,8 @@ def tx_content(tx):
             "hashedContent": tx.hashed_content.get_hashed_content()
         }
     }
-    return json.dumps(payload)
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
 
 #function to handle a json encoded transaction using the account model
 def handle_account_transaction(cmd):

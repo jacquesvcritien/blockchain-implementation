@@ -6,8 +6,6 @@ class Database:
         self.database = pd.DataFrame(columns=['Account', 'Balance'])
         self.mining_database = pd.DataFrame(columns=['Account', 'Balance'])
 
-        
-
     #function to get balance of account
     def get_balance(self, account):
         #check if account exists
@@ -46,7 +44,7 @@ class Database:
     #function to execute a transfer if possible
     def transfer(self, from_ac, to):
         #check if the sender has enough balance
-        if self.get_balance(from_ac) < 1 and from_ac != "0":
+        if self.get_balance(from_ac) < 1 and from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False
 
         #increase balance of receiver
@@ -57,7 +55,7 @@ class Database:
     #function to check if a transfer is possible
     def check_transfer(self, from_ac, to):
         #check if the sender has enough balance
-        if self.get_balance(from_ac) < 1 and sender != "0":
+        if self.get_balance(from_ac) < 1 and sender != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False
 
         return True

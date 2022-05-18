@@ -161,10 +161,8 @@ class Protocol:
         message = bytearray()
         message += "r".encode(config.BYTE_ENCODING_TYPE)
 
-        #get payload
-        payload = self.__request_block_payload(hash)
         #append payload to message
-        message += payload.encode(config.BYTE_ENCODING_TYPE)
+        message += self.__request_block_payload(hash)
         #create message
         return self.create_message_bytes(message)
 
@@ -180,10 +178,8 @@ class Protocol:
         message = bytearray()
         message += "z".encode(config.BYTE_ENCODING_TYPE)
 
-        #get payload
-        payload = self.__block_payload(block)
         #append payload to message
-        message += payload.encode(config.BYTE_ENCODING_TYPE)
+        message += self.__block_payload(block)
         #create message
         return self.create_message_bytes(message)
 
@@ -243,10 +239,8 @@ class Protocol:
         new_tx_msg = bytearray()
         #add initial character
         new_tx_msg += "t".encode(config.BYTE_ENCODING_TYPE)
-        #get payload
-        payload = self.__tx_payload(transaction)
         #append payload to message
-        new_tx_msg += payload.encode(config.BYTE_ENCODING_TYPE)
+        new_tx_msg += self.__tx_payload(transaction)
         
         #create msg
         msg_to_send = self.create_message_bytes(new_tx_msg)
@@ -289,11 +283,10 @@ class Protocol:
         #add initial character
         highest_block_res += "c".encode(config.BYTE_ENCODING_TYPE)
         #get number of blocks
+        
         block_count = self.state.get_block_count()
-        #get payload
-        payload = self.__get_block_count_res_payload(block_count)
         #append payload to message
-        highest_block_res += payload.encode(config.BYTE_ENCODING_TYPE)
+        highest_block_res += self.__get_block_count_res_payload(block_count)
 
         msg_to_send = self.create_message_bytes(highest_block_res)
         return msg_to_send
@@ -334,10 +327,8 @@ class Protocol:
         block_hashes_res += "h".encode(config.BYTE_ENCODING_TYPE)
         #get block hashes
         hashes = self.state.get_block_hashes()
-        #get payload
-        payload = self.__get_block_hashes_res_payload(hashes)
         #append payload to message
-        block_hashes_res += payload.encode(config.BYTE_ENCODING_TYPE)
+        block_hashes_res += self.__get_block_hashes_res_payload(hashes)
 
         msg_to_send = self.create_message_bytes(block_hashes_res)
         return msg_to_send
@@ -368,7 +359,7 @@ class Protocol:
             for hash in received_hashes:
                 #if block hash does not match our block hash, request block
                 if self.state.chain.get_block_hash(index) != hash:
-                    print("Requesting hash", hash)
+                    # print("Requesting hash", hash)
                     messages_to_send.append(self.request_block(hash))
 
                 #increment counter
@@ -383,19 +374,17 @@ class Protocol:
 
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_request_block_message")
-        #get block hashes
-        received_hashes = fn(cmd)
+        #get block hash
+        received_hash = fn(cmd)
         
         #prepare message to return
         request_block_res = bytearray()
         #add initial character
         request_block_res += "x".encode(config.BYTE_ENCODING_TYPE)
         #get block hashes
-        block = self.state.get_block(hash)
-        #get payload
-        payload = self.__block_payload(block)
+        block = self.state.get_block(received_hash)
         #append payload to message
-        request_block_res += payload.encode(config.BYTE_ENCODING_TYPE)
+        request_block_res += self.__block_payload(block)
 
         msg_to_send = self.create_message_bytes(request_block_res)
         return msg_to_send
@@ -412,10 +401,8 @@ class Protocol:
         block_msg = bytearray()
         #add initial character
         block_msg += letter.encode(config.BYTE_ENCODING_TYPE)
-        #get payload
-        payload = self.__block_payload(block)
         #append payload to message
-        block_msg += payload.encode(config.BYTE_ENCODING_TYPE)
+        block_msg += self.__block_payload(block)
         
         #create msg
         msg_to_send = self.create_message_bytes(block_msg)

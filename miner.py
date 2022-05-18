@@ -67,8 +67,6 @@ class Miner:
                 #get previous hash
                 prev_hash = self.chain.get_prev_hash()
 
-                #set state transactions to empty = 
-
                 #initialise a block
                 block = Block(prev_hash)
 
@@ -101,6 +99,6 @@ class Miner:
     #function to add a transaction
     def add_transaction(self):
         #create a tx to the user himself/herself
-        tx = Transaction("0", self.wallet.public_key)
+        tx = Transaction("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", self.wallet.public_key)
         tx.calculate_hash_sign(self.wallet)
         return tx
