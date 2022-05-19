@@ -3,3 +3,4 @@ txs/*
 wallets/*
 __pycache__
 dbs/*
+testscript.py

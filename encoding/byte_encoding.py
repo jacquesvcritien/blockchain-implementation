@@ -64,34 +64,17 @@ def block_content(block):
         #add tx's signature
         msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
 
+        #if config is utxo model
+        if(config.DB_MODEL == "utxo"):
+            #add spent tx
+            msg_to_send += tx.hashed_content.spent_tx.to_bytes(5, byteorder="big")
+
 
     return msg_to_send
 
 #function to create empty BYTE message
 def empty_content():
     return ""
-
-#function to handle a byte encoded transaction using the account model
-def handle_account_transaction(tx):
-    #extract transaction number
-    trn = int.from_bytes(cmd[1:3], byteorder='big')
-    print("Got new transaction number", trn, file=self.state.logFile)
-    self.state.logFile.flush()
-    from_user = cmd[3:5].decode(config.BYTE_ENCODING_TYPE)
-    to_user = cmd[5:7].decode(config.BYTE_ENCODING_TYPE)
-    timestamp = int.from_bytes(cmd[7:11], byteorder='big')
-    approved = int.from_bytes(cmd[11:12], byteorder='big')
-    approve_tx = int.from_bytes(cmd[12:14], byteorder='big')
-
-        #if transaction number is more than next number, synchronise
-    if trn > len(self.state.transactions) + 1:
-        self.state.synchronize(self, peers)
-
-    payload_received = cmd[1:len(cmd)].decode(config.BYTE_ENCODING_TYPE)
-    print("received new block", payload_received)
-    #change to json
-    payload_received = json.load(payload_received)
-
 
 #function to handle block count response message
 def handle_block_count_message(cmd):
@@ -191,18 +174,121 @@ def handle_new_block_message(cmd):
         end_index += 128
         tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
 
+        #if config is utxo model
+        if(config.DB_MODEL == "utxo"):
+            #get spent tx
+            start_index = end_index
+            end_index += 5
+            tx["hashedContent"]["spent_tx"] = int.from_bytes(cmd[start_index:end_index], byteorder='big')
+
+
         #append tx
         block["hashedContent"]["transactions"].append(tx)
 
     #change to json
     return block
 
-#function to create bytes message for tx message
-def tx_content(tx):
-    payload = {
-        "transaction": {
-            "hash": tx.hash,
-            "hashedContent": tx.hashed_content.get_hashed_content()
+#function to create bytes message for account model tx message
+def account_tx_content(tx):
+    #init message to send
+    msg_to_send = bytearray()
+    #append hash
+    msg_to_send += tx.hash.encode(config.BYTE_ENCODING_TYPE)
+    #append sender
+    msg_to_send += tx.hashed_content.signed_content.from_ac.encode(config.BYTE_ENCODING_TYPE)
+    #append receiver
+    msg_to_send += tx.hashed_content.signed_content.to_ac.encode(config.BYTE_ENCODING_TYPE)
+    #append signature
+    msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
+    
+    return msg_to_send
+
+#function to create bytes message for utxo model tx message
+def utxo_tx_content(tx):
+    #init message to send
+    msg_to_send = bytearray()
+    #append hash
+    msg_to_send += tx.hash.encode(config.BYTE_ENCODING_TYPE)
+    #append sender
+    msg_to_send += tx.hashed_content.signed_content.from_ac.encode(config.BYTE_ENCODING_TYPE)
+    #append receiver
+    msg_to_send += tx.hashed_content.signed_content.to_ac.encode(config.BYTE_ENCODING_TYPE)
+    #append signature
+    msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
+    #append spent_tx
+    msg_to_send += tx.hashed_content.spent_tx.to_bytes(5, byteorder="big")
+    
+    return msg_to_send
+
+#function to handle a byte encoded transaction using the account model
+def handle_account_transaction(cmd):
+    #start index to obtain
+    start_index = 1
+    #end index to obtain
+    end_index = 65
+    #tx to populate
+    tx = {
+        "hash": "",
+        "hashedContent": {
+            "from_ac": "",
+            "to_ac": "",
+            "signature": ""
         }
     }
-    return json.dumps(payload)
+    #get tx hash
+    tx["hash"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get sender
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["from_ac"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get receiver
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["to_ac"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get signature
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+
+    return tx
+
+#function to handle a byte encoded transaction using the utxo model
+def handle_utxo_transaction(cmd):
+    #start index to obtain
+    start_index = 1
+    #end index to obtain
+    end_index = 65
+    #tx to populate
+    tx = {
+        "hash": "",
+        "hashedContent": {
+            "from_ac": "",
+            "to_ac": "",
+            "signature": ""
+        }
+    }
+    #get tx hash
+    tx["hash"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get sender
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["from_ac"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get receiver
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["to_ac"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get signature
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get signature
+    start_index = end_index
+    end_index += 128
+    tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
+    #get spent_tx
+    start_index = end_index
+    end_index += 5
+    tx["hashedContent"]["signature"] = int.from_bytes(cmd[start_index:end_index], byteorder='big')
+
+
+    return tx

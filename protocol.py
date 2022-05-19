@@ -104,13 +104,13 @@ class Protocol:
             #     self.state.local_tx_count += 1
             #     self.state.network_tx_count = len(self.state.transactions)
             #     #return okay
-            #     return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
+            #     return self.create_message("o".encode(config.BYTE_ENCODING_TYPE))
             # #if height already exists
             # elif len(self.state.transactions) >= trn:
             #     #if our stored tx is older, ignore this
             #     if self.state.transactions[trn-1]["timestamp"] <= timestamp:
             #         #return fail
-            #         return self.create_message_bytes("f".encode(config.BYTE_ENCODING_TYPE))
+            #         return self.create_message("f".encode(config.BYTE_ENCODING_TYPE))
             #     #if new transaction is older
             #     else:
             #         #replace
@@ -123,7 +123,7 @@ class Protocol:
             #             "approve_tx": approve_tx
             #         }
             #         #return ok
-            #         return self.create_message_bytes("o".encode(config.BYTE_ENCODING_TYPE))
+            #         return self.create_message("o".encode(config.BYTE_ENCODING_TYPE))
 
 
     #function to get block count from neighbours
@@ -136,7 +136,7 @@ class Protocol:
         payload = self.__empty_payload()
         message += payload.encode(config.BYTE_ENCODING_TYPE)
         #create message
-        return self.create_message_bytes(message)
+        return self.create_message(message)
 
     #function to get block hashes from neighbours
     def get_block_hashes(self):
@@ -148,7 +148,7 @@ class Protocol:
         payload = self.__empty_payload()
         message += payload.encode(config.BYTE_ENCODING_TYPE)
         #create message
-        return self.create_message_bytes(message)
+        return self.create_message(message)
 
     def __empty_payload(self):
         #get function from module
@@ -164,7 +164,7 @@ class Protocol:
         #append payload to message
         message += self.__request_block_payload(hash)
         #create message
-        return self.create_message_bytes(message)
+        return self.create_message(message)
 
     #function to create message for request block message
     def __request_block_payload(self, hash):
@@ -181,13 +181,13 @@ class Protocol:
         #append payload to message
         message += self.__block_payload(block)
         #create message
-        return self.create_message_bytes(message)
+        return self.create_message(message)
 
     def get_highest_tx_num(self):
-        return self.create_message_bytes(str.encode("h"))
+        return self.create_message(str.encode("h"))
 
     #function to create a message to be sent
-    def create_message_bytes(self, message):
+    def create_message(self, message):
         #calculate message length
         msg_length = len(message)
         #switch to 2 bytes
@@ -201,28 +201,6 @@ class Protocol:
         msg += message
         msg += ascii(3).encode(config.BYTE_ENCODING_TYPE)
 
-        # msg += ascii(3)
-
-        return msg
-
-    #function to create a message to be sent
-    def create_message_bytes_test(self, message):
-        #calculate message length
-        msg_length = len(message)
-        print("MSG LEN", msg_length)
-        #switch to 2 bytes
-        msg_length = msg_length.to_bytes(2, byteorder='big')
-        print("MSG LEN", msg_length)
-
-        print("MSG LEN PARSED",int.from_bytes(msg_length, byteorder='big'))
-
-        #create message
-        msg = bytearray()
-        # msg += ascii(2)
-        msg += ascii(2).encode(config.BYTE_ENCODING_TYPE)
-        msg += msg_length
-        msg += message
-        msg += ascii(3).encode(config.BYTE_ENCODING_TYPE)
         # msg += ascii(3)
 
         return msg
@@ -230,7 +208,7 @@ class Protocol:
     #function to create payload for send tx message
     def __tx_payload(self, block):
         #get function from module
-        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "tx_content")
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", config.DB_MODEL+"_tx_content")
         return fn(block)
 
     #function to send tx
@@ -243,7 +221,7 @@ class Protocol:
         new_tx_msg += self.__tx_payload(transaction)
         
         #create msg
-        msg_to_send = self.create_message_bytes(new_tx_msg)
+        msg_to_send = self.create_message(new_tx_msg)
         return msg_to_send
 
     def send_new_tx_bytes(self, transaction):
@@ -263,14 +241,14 @@ class Protocol:
         new_tx_msg += approved.to_bytes(1, byteorder='big')
         new_tx_msg += approve_tx.to_bytes(2, byteorder='big')
 
-        return self.create_message_bytes(new_tx_msg)
+        return self.create_message(new_tx_msg)
 
 
     def get_tx(self, trn):
         new_tx_msg = bytearray()
         new_tx_msg += "g".encode(config.BYTE_ENCODING_TYPE)
         new_tx_msg += trn.to_bytes(2, byteorder='big')
-        return self.create_message_bytes(new_tx_msg)
+        return self.create_message(new_tx_msg)
 
 
     #function to handle get block count message
@@ -288,7 +266,7 @@ class Protocol:
         #append payload to message
         highest_block_res += self.__get_block_count_res_payload(block_count)
 
-        msg_to_send = self.create_message_bytes(highest_block_res)
+        msg_to_send = self.create_message(highest_block_res)
         return msg_to_send
 
     #function to handle block count response message
@@ -330,7 +308,7 @@ class Protocol:
         #append payload to message
         block_hashes_res += self.__get_block_hashes_res_payload(hashes)
 
-        msg_to_send = self.create_message_bytes(block_hashes_res)
+        msg_to_send = self.create_message(block_hashes_res)
         return msg_to_send
 
     #function to create message for block hashes return
@@ -386,7 +364,7 @@ class Protocol:
         #append payload to message
         request_block_res += self.__block_payload(block)
 
-        msg_to_send = self.create_message_bytes(request_block_res)
+        msg_to_send = self.create_message(request_block_res)
         return msg_to_send
 
     #function to create message for request block return
@@ -405,7 +383,7 @@ class Protocol:
         block_msg += self.__block_payload(block)
         
         #create msg
-        msg_to_send = self.create_message_bytes(block_msg)
+        msg_to_send = self.create_message(block_msg)
         return msg_to_send
 
     #function to handle new block message
@@ -474,10 +452,9 @@ class Protocol:
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_"+config.DB_MODEL+"_transaction")
         payload_received = fn(cmd)
 
-        print("payload", payload_received)
-
         #initialise transaction
-        hashed_content = TxHashedContent.load(payload_received["hashedContent"]["from_ac"], payload_received["hashedContent"]["to_ac"], payload_received["hashedContent"]["signature"])
+        spent_tx = None if config.DB_MODEL == "account" else payload_received["hashedContent"]["spent_tx"]
+        hashed_content = TxHashedContent.load(payload_received["hashedContent"]["from_ac"], payload_received["hashedContent"]["to_ac"], payload_received["hashedContent"]["signature"], spent_tx)
         tx = Transaction.load(hashed_content, payload_received["hash"])
 
         #verify tx
@@ -489,7 +466,7 @@ class Protocol:
             return
 
         #check if transfer can happen
-        transfer_allowed=self.state.database.check_transfer(tx.hashed_content.signed_content.from_ac, tx.hashed_content.signed_content.to_ac, False)
+        transfer_allowed=self.state.database.check_transfer(tx, False)
 
         if not transfer_allowed:
             print("TX Transfer not allowed - sender out of funds")

@@ -25,9 +25,6 @@ class Miner:
 
             #if state transactions pool > previous block transactions, reset nonce
             if(len(self.state.transactions) > len(block.hashed_content.transactions)-1):
-                print("Resetting nonce")
-                for tx in self.state.transactions:
-                    print(tx.to_json())
                 #reset nonce
                 block.reset_nonce()
                 #reset txs
@@ -39,7 +36,6 @@ class Miner:
             
             #if not synced or block is found, halt mining
             if not self.state.is_synced() or self.state.local_block_count >= block_num_to_mine:
-                # print("Node not synced")
                 return False
 
             #increase nonce 
@@ -56,7 +52,6 @@ class Miner:
             #reset mining balances
             self.state.database.reset_mining_balances()
             return True
-
 
 
     #function to mine
@@ -90,7 +85,7 @@ class Miner:
 
                     #send new block to neighbours
                     new_block_msg = self.protocol.new_block(block)
-                    self.peers.broadcast_message_bytes(new_block_msg)
+                    self.peers.broadcast_message(new_block_msg)
                 else:
                     self.state.synchronize(self.protocol, self.peers)
             else:
@@ -99,6 +94,7 @@ class Miner:
     #function to add a transaction
     def add_transaction(self):
         #create a tx to the user himself/herself
-        tx = Transaction("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", self.wallet.public_key)
+        spent_tx = None if config.DB_MODEL == "account" else 0
+        tx = Transaction("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", self.wallet.public_key, spent_tx)
         tx.calculate_hash_sign(self.wallet)
         return tx

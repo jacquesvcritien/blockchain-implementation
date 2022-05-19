@@ -71,8 +71,19 @@ def handle_new_block_message(cmd):
     #change to json
     return json.loads(cmd[1:len(cmd)])["block"]
 
-#function to create JSON message for tx message
-def tx_content(tx):
+#function to create JSON message for account model tx message
+def account_tx_content(tx):
+    payload = {
+        "transaction": {
+            "hash": tx.hash,
+            "hashedContent": tx.hashed_content.get_hashed_content()
+        }
+    }
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
+
+#function to create JSON message for utxo model tx message - IDENTICAL TO ABOVE
+def utxo_tx_content(tx):
     payload = {
         "transaction": {
             "hash": tx.hash,
@@ -86,7 +97,13 @@ def tx_content(tx):
 def handle_account_transaction(cmd):
     #change to json
     payload_received = json.loads(cmd[1:len(cmd)])["transaction"]
-    print("received new transaction", payload_received)
+
+    return payload_received
+
+#function to handle a json encoded transaction using the utxo model - IDENTICAL TO ABOVE
+def handle_utxo_transaction(cmd):
+    #change to json
+    payload_received = json.loads(cmd[1:len(cmd)])["transaction"]
 
     return payload_received
 

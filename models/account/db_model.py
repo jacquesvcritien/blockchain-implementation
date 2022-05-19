@@ -51,20 +51,28 @@ class Database:
 
 
     #function to execute a transfer if possible
-    def transfer(self, from_ac, to, actual=True):
+    def transfer(self, tx, actual=True):
+        #get from 
+        from_ac = tx.hashed_content.signed_content.from_ac
+        #get to
+        to_ac = tx.hashed_content.signed_content.to_ac
         #check if the sender has enough balance
         if self.get_balance(from_ac, actual) < 1 and from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False
 
         #increase balance of receiver
-        self.__increase_balance(to, actual)
+        self.__increase_balance(to_ac, actual)
 
         #decrease balance of sender
         if(from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"):
             self.__decrease_balance(from_ac, actual)
 
     #function to check if a transfer is possible
-    def check_transfer(self, from_ac, to, actual=True):
+    def check_transfer(self, tx, actual=True):
+        #get from 
+        from_ac = tx.hashed_content.signed_content.from_ac
+        #get to
+        to_ac = tx.hashed_content.signed_content.to_ac
         #check if the sender has enough balance
         if self.get_balance(from_ac, actual) < 1 and from_ac != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000":
             return False

@@ -1,6 +1,8 @@
 from txHashedContent import TxHashedContent 
-from txSignedContent import TxSignedContent 
+from txSignedContent import AccountTxSignedContent 
+from txSignedContent import UtxoTxSignedContent 
 from transaction import Transaction
+import config as config
 
 class BlockHashedContent:
     def __init__(self, prev_hash):
@@ -15,11 +17,12 @@ class BlockHashedContent:
         new_hashed_content.nonce = block["nonce"]
         new_hashed_content.prev_hash = block["prev_hash"]
         new_hashed_content.timestamp = block["timestamp"]
-        new_hashed_content.tarnsactions = []
+        new_hashed_content.transactions = []
 
         #for each transaction
         for tx in block["transactions"]:
-            hashed_content = TxHashedContent.load(tx["hashedContent"]["from_ac"], tx["hashedContent"]["to_ac"], tx["hashedContent"]["signature"])
+            spent_tx = None if config.DB_MODEL == "account" else tx["hashedContent"]["spent_tx"]
+            hashed_content = TxHashedContent.load(tx["hashedContent"]["from_ac"], tx["hashedContent"]["to_ac"], tx["hashedContent"]["signature"], spent_tx)
             new_tx = Transaction.load(hashed_content, tx["hash"])
             new_hashed_content.transactions.append(new_tx)
 

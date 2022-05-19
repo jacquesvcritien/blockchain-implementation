@@ -6,14 +6,15 @@ import base64
 from txHashedContent import TxHashedContent 
 
 class Transaction:
-    def __init__(self, from_user, to_user):
-        self.hashed_content = TxHashedContent(from_user, to_user)
+    def __init__(self, from_user, to_user, spent_tx=None):
+        self.hashed_content = TxHashedContent(from_user, to_user, spent_tx)
         self.hash = ""
 
     @classmethod
     def load(cls, hashed_content, hash):
         #init tx
-        new_tx = cls(hashed_content.signed_content.from_ac, hashed_content.signed_content.to_ac)
+        spent_tx = None if config.DB_MODEL == "account" else hashed_content.signed_content.spent_tx
+        new_tx = cls(hashed_content.signed_content.from_ac, hashed_content.signed_content.to_ac, spent_tx)
         #fill hashed content signature
         new_tx.hashed_content.signature = hashed_content.signature
         #fill hash

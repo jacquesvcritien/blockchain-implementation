@@ -64,11 +64,8 @@ class Block:
                 print("TX Hash failed to be verified")
                 return False
 
-            #get from 
-            from_ac = tx.hashed_content.signed_content.from_ac
-            to_ac = tx.hashed_content.signed_content.to_ac
             #check balance
-            transfer_allowed=database.check_transfer(from_ac, to_ac)
+            transfer_allowed=database.check_transfer(tx)
 
             if not transfer_allowed:
                 print("TX Transfer not allowed - sender out of funds")

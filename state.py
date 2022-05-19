@@ -26,7 +26,7 @@ class State:
     #function to synchronize
     def synchronize(self, protocol, peers):
         get_blocks_count_msg = protocol.get_block_count()
-        peers.broadcast_message_bytes(get_blocks_count_msg)
+        peers.broadcast_message(get_blocks_count_msg)
 
         write_to_file("Syncing and asking for block count", self.logFile)
 
@@ -91,6 +91,7 @@ class State:
     def insert_block(self, block):
         #increment local count
         self.local_block_count += 1
+        self.transactions = []
 
         #if local block count is more than network, increase network
         if(self.local_block_count > self.network_block_count):
@@ -174,13 +175,8 @@ class State:
     def perform_transfers(self, block):
         #for each transfer
         for tx in block.hashed_content.transactions:
-            
-            #get from
-            from_ac = tx.hashed_content.signed_content.from_ac
-            #get to
-            to_ac = tx.hashed_content.signed_content.to_ac
             #make transfer
-            self.database.transfer(from_ac, to_ac)
+            self.database.transfer(tx)
 
     #function to check if synced
     def is_synced(self):

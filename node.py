@@ -83,7 +83,7 @@ def init():
     syncing_check = threading.Thread(target=check_sync)
     syncing_check.start()
 
-    listen_UDP = threading.Thread(target=peers.process_incoming_messages_bytes, args=[protocol])
+    listen_UDP = threading.Thread(target=peers.process_incoming_messages, args=[protocol])
     listen_UDP.start()
 
     time.sleep(5)
@@ -103,7 +103,7 @@ def init():
 
     # #ask for highest tx num
     # highest_tx_msg = protocol.get_highest_tx_num()
-    # peers.broadcast_message_bytes(highest_tx_msg)
+    # peers.broadcast_message(highest_tx_msg)
 
     # time.sleep(10)
 
@@ -133,7 +133,7 @@ def send_wbe():
 
     recipient = ""
     while len(recipient) != 128:
-        recipient = input("Enter address to send to: ").upper()
+        recipient = input("Enter address to send to: ").lower()
         if len(recipient) != 128:
             print("Username must be the initials (128 characters long)")
         if recipient == wallet.public_key:
@@ -162,106 +162,7 @@ def send_wbe():
     #generate tx msg
     send_new_tx_msg = protocol.send_new_tx(new_tx)
     #send tx msg
-    peers.broadcast_message_bytes(send_new_tx_msg)
-
-#sends wbe
-# def approve_transaction():
-#     trn = ""
-#     valid = False
-#     while not valid:
-#         trn = input("Enter transaction number: ")
-#         if not trn.isnumeric():
-#             print("Transaction number must be a valid number")
-#             continue
-
-#         trn = int(trn)
-#         if trn > len(state.transactions) or trn < 1:
-#             print("Transaction does not exist")
-#             continue
-
-#         #get transaction
-#         tx = state.get_transaction(trn)
-
-#         #check if user can approve
-#         if tx["to_username"] != state.user_initials:
-#             print("Unauthorized")
-#             continue
-
-#         #check if tx is already approved
-#         if not state.is_tx_approvable(trn):
-#             print("Transaction is already approved")
-#             continue
-
-#         valid = True
-
-#     state.synchronize(protocol, peers)
-        
-#     #get next tx number
-#     next_tx_number = state.network_tx_count
-#     print("Sending new tx "+str(next_tx_number+1), file=state.logFile)
-#     state.logFile.flush()
-
-#     transaction = {
-#         "number": next_tx_number+1,
-#         "from_username": "00",
-#         "to_username": state.user_initials,
-#         "timestamp": int(time.time()),
-#         "approved": 1,
-#         "approve_tx": trn
-#     }
-
-#     #add transaction
-#     state.transactions.append(transaction)
-#     state.local_tx_count += 1
-#     state.network_tx_count += 1
-
-#     #generate tx msg
-#     send_new_tx_msg = protocol.send_new_tx_bytes(transaction)
-#     #send tx msg
-#     peers.broadcast_message_bytes(send_new_tx_msg)
-
-# #sends wbe with approval
-# def send_wbe_approval():
-#     username = ""
-#     while len(username) != 2:
-#         username = input("Enter username to send to: ").upper()
-#         if len(username) != 2:
-#             print("Username must be the initials (2 characters long)")
-#         if username == state.user_initials:
-#             print("Username must be different than yours")
-#             username = ""
-
-#     if get_balance() < 1:
-#         print("Not enough balance")
-#         return
-
-#     state.synchronize(protocol, peers)
-        
-#     #get next tx number
-#     next_tx_number = state.network_tx_count
-#     print("Sending new tx "+str(next_tx_number+1), file=state.logFile)
-#     state.logFile.flush()
-
-#     transaction = {
-#         "number": next_tx_number+1,
-#         "from_username": state.user_initials,
-#         "to_username": username,
-#         "timestamp": int(time.time()),
-#         "approved": 0,
-#         "approve_tx": 0
-#     }
-
-#     #add transaction
-#     state.transactions.append(transaction)
-#     state.local_tx_count += 1
-#     state.network_tx_count += 1
-
-#     # print(transaction)
-
-#     #generate tx msg
-#     send_new_tx_msg = protocol.send_new_tx_bytes(transaction)
-#     #send tx msg
-#     peers.broadcast_message_bytes(send_new_tx_msg)
+    peers.broadcast_message(send_new_tx_msg)
 
 def print_txs():
     state.print_txs()
