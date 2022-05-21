@@ -48,9 +48,7 @@ class Miner:
 
         if self.state.is_synced() and block_num_to_mine > self.state.local_block_count:
             #clear pending txs
-            self.state.transactions = []
-            #reset mining balances
-            self.state.database.reset_mining_balances()
+            self.state.transactions.clear()
             return True
 
 
@@ -86,6 +84,9 @@ class Miner:
                     #send new block to neighbours
                     new_block_msg = self.protocol.new_block(block)
                     self.peers.broadcast_message(new_block_msg)
+                    #reset mining balances
+                    self.state.database.reset_mining_tables()
+                    print("Found block")
                 else:
                     self.state.synchronize(self.protocol, self.peers)
             else:
@@ -94,7 +95,7 @@ class Miner:
     #function to add a transaction
     def add_transaction(self):
         #create a tx to the user himself/herself
-        spent_tx = None if config.DB_MODEL == "account" else 0
-        tx = Transaction("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", self.wallet.public_key, spent_tx)
+        spent_tx = None if config.DB_MODEL == "account" else config.INITIAL_HASH
+        tx = Transaction(config.MINING_SENDER, self.wallet.public_key, spent_tx)
         tx.calculate_hash_sign(self.wallet)
         return tx

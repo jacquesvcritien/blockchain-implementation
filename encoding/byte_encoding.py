@@ -67,7 +67,7 @@ def block_content(block):
         #if config is utxo model
         if(config.DB_MODEL == "utxo"):
             #add spent tx
-            msg_to_send += tx.hashed_content.spent_tx.to_bytes(5, byteorder="big")
+            msg_to_send += tx.hashed_content.signed_content.spent_tx.encode(config.BYTE_ENCODING_TYPE)
 
 
     return msg_to_send
@@ -178,8 +178,8 @@ def handle_new_block_message(cmd):
         if(config.DB_MODEL == "utxo"):
             #get spent tx
             start_index = end_index
-            end_index += 5
-            tx["hashedContent"]["spent_tx"] = int.from_bytes(cmd[start_index:end_index], byteorder='big')
+            end_index += 64
+            tx["hashedContent"]["spent_tx"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
 
 
         #append tx
@@ -216,7 +216,7 @@ def utxo_tx_content(tx):
     #append signature
     msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
     #append spent_tx
-    msg_to_send += tx.hashed_content.spent_tx.to_bytes(5, byteorder="big")
+    msg_to_send += tx.hashed_content.signed_content.spent_tx.encode(config.BYTE_ENCODING_TYPE)
     
     return msg_to_send
 
@@ -281,14 +281,10 @@ def handle_utxo_transaction(cmd):
     start_index = end_index
     end_index += 128
     tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
-    #get signature
-    start_index = end_index
-    end_index += 128
-    tx["hashedContent"]["signature"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
     #get spent_tx
     start_index = end_index
-    end_index += 5
-    tx["hashedContent"]["signature"] = int.from_bytes(cmd[start_index:end_index], byteorder='big')
+    end_index += 64
+    tx["hashedContent"]["spent_tx"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
 
 
     return tx

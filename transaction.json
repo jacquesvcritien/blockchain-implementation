@@ -1,9 +1,0 @@
-{
-    "signature": "<digital_signature>",
-    "content": {
-        "from": "<from_username-sender_address>",
-        "to": "<tp_username-sender_address>"
-    },
-    "sender": "<sender_addr-public_key>",
-    "hash": "<tx_hash>"
-}

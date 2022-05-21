@@ -8,7 +8,6 @@ from helper_utils import write_to_file
 class State:
     def __init__(self, port, chain):
         self.user_initials = ""
-        #array of <transaction_number, timestamp, from_username, to_username>
         self.transactions = []
         self.chain = chain
         self.local_block_count = 0
@@ -19,7 +18,13 @@ class State:
 
         #init database
         Database = get_module_fn("models."+config.DB_MODEL+".db_model", "Database")
-        self.database = Database(port)
+
+        #if traverse chain version
+        if config.DB_MODEL == "utxo" and config.TRAVERSE_UTXO == "chain":
+            Database = get_module_fn("models."+config.DB_MODEL+".db_model_traverse", "Database")
+            self.database = Database(self.chain, self.transactions)
+        else:
+            self.database = Database(port)
 
         self.logFile = open('logs/log_'+str(port)+'.txt', 'w')
 
@@ -91,7 +96,7 @@ class State:
     def insert_block(self, block):
         #increment local count
         self.local_block_count += 1
-        self.transactions = []
+        self.transactions.clear()
 
         #if local block count is more than network, increase network
         if(self.local_block_count > self.network_block_count):
@@ -99,27 +104,6 @@ class State:
 
         #add block to chain
         self.chain.add_block(block)
-
-    # #get unapproved txs
-    # def get_unapproved_txs(self):
-    #     unapproved_txs = []
-    #     for tx in self.transactions:
-    #         found = False
-    #         #if transaction is not approved automatically
-    #         if tx["approved"] == 0:
-    #             #loop through transactions
-    #             for tx_check in self.transactions:
-    #                 #if transaction is found to be approved
-    #                 if tx_check["approve_tx"] == tx["number"] and tx["to_username"]:
-    #                     found = True
-    #                     break
-            
-    #             #if not found to be approved
-    #             if not found and tx["to_username"] == self.user_initials:
-    #                 unapproved_txs.append(tx)
-
-    #     return unapproved_txs
-        
 
     #print transactions
     def print_txs(self):
@@ -130,14 +114,6 @@ class State:
                 print(str(tx["number"])+" ("+str(datetime.fromtimestamp(tx["timestamp"]))+") : "+ tx["from_username"]+" -> "+tx["to_username"])
 
         self.write_txs_to_file()
-
-    # #print unapproved transactions
-    # def print_unapproved_txs(self):
-    #     unapproved_txs = self.get_unapproved_txs()
-    #     for tx in unapproved_txs:
-    #         print(str(tx["number"])+" ("+str(datetime.fromtimestamp(tx["timestamp"]))+") : "+ tx["from_username"]+" -> "+tx["to_username"])
-
-    #     self.write_txs_to_file()
 
     #calculates the balance of a user
     def get_balance(self, address):
@@ -150,26 +126,44 @@ class State:
         jsonFile.write(jsonString)
         jsonFile.close()
 
-    # #function to write unapproved txs to file
-    # def write_unapproved_txs_to_file(self):
-    #     jsonString = json.dumps(self.transactions)
-    #     jsonFile = open("txs/"+str(self.port)+"_unapproved_txs.json", "w")
-    #     jsonFile.write(jsonString)
-    #     jsonFile.close()
+    #function to perform transfers checks
+    def perform_check_transfers(self, block):
+        #for each transfer
+        return self.database.check_transfers(block.hashed_content.transactions)
+
+    #function to perform transfers checks in a past block
+    def perform_check_transfers_past_block(self, block, block_index):
+        #get balances at the previous block index
+        past_balances = self.chain.get_balances_at_block(block_index-1)
+
+        #for each transfer
+        for tx in block.hashed_content.transactions:
+            sender = tx.hashed_content.signed_content.from_ac
+            receiver = tx.hashed_content.signed_content.to_ac
+
+            #if account based
+            if config.DB_MODEL == "account":
+                if past_balances[sender] < 1:
+                    return False
+                past_balances[sender] -= 1
+                past_balances[receiver] += 1
+
+            #if utxo based
+            if config.DB_MODEL == "utxo":
+                spent_tx = tx.hashed_content.signed_content.spent_tx
 
 
-    # #check if tx is approvable
-    # def is_tx_approvable(self, trn):
-    #     for tx in self.transactions:
-    #         #if transaction is not approved automatically
-    #         if tx["number"] == trn:
-    #             #loop through transactions
-    #             for tx_check in self.transactions:
-    #                 #if transaction is found to be already approved
-    #                 if tx_check["approve_tx"] == tx["number"]:
-    #                     return False
+                #if spent tx not in unspent txs
+                if sender != config.MINING_SENDER:
+                    if spent_tx not in past_balances[sender]:
+                        return False
+
+                    past_balances[sender].remove(spent_tx)
+                    
+                past_balances[receiver].append(tx.hash)
         
-    #     return True
+
+        return True
 
     #function to perform transfers
     def perform_transfers(self, block):
@@ -181,4 +175,8 @@ class State:
     #function to check if synced
     def is_synced(self):
         return self.local_block_count == self.network_block_count
+
+    #function to add pending tx
+    def add_pending_tx(self, pending_tx):
+        self.transactions.append(pending_tx)
 

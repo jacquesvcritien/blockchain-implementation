@@ -71,60 +71,6 @@ class Protocol:
         if first_letter == 't':
             self.__handle_new_tx(cmd)
             return [None]
-            # print("GOT NEW TX MSG", file=self.state.logFile)
-            # self.state.logFile.flush()
-            # #extract transaction number
-            # trn = int.from_bytes(cmd[1:3], byteorder='big')
-            # print("Got new transaction number", trn, file=self.state.logFile)
-            # self.state.logFile.flush()
-            # from_user = cmd[3:5].decode(config.BYTE_ENCODING_TYPE)
-            # to_user = cmd[5:7].decode(config.BYTE_ENCODING_TYPE)
-            # timestamp = int.from_bytes(cmd[7:11], byteorder='big')
-            # approved = int.from_bytes(cmd[11:12], byteorder='big')
-            # approve_tx = int.from_bytes(cmd[12:14], byteorder='big')
-
-            # #if transaction number is more than next number, synchronise
-            # if trn > len(self.state.transactions) + 1:
-            #     self.state.synchronize(self, peers)
-            
-            # #if a new height
-            # if (len(self.state.transactions)+1) == trn:
-            #     #append tx
-            #     new_tx = {
-            #         "number": trn,
-            #         "from_username": from_user,
-            #         "to_username": to_user,
-            #         "timestamp": timestamp,
-            #         "approved": approved,
-            #         "approve_tx": approve_tx
-            #     }
-
-            #     #add tx to state
-            #     self.state.transactions.append(new_tx)
-            #     self.state.local_tx_count += 1
-            #     self.state.network_tx_count = len(self.state.transactions)
-            #     #return okay
-            #     return self.create_message("o".encode(config.BYTE_ENCODING_TYPE))
-            # #if height already exists
-            # elif len(self.state.transactions) >= trn:
-            #     #if our stored tx is older, ignore this
-            #     if self.state.transactions[trn-1]["timestamp"] <= timestamp:
-            #         #return fail
-            #         return self.create_message("f".encode(config.BYTE_ENCODING_TYPE))
-            #     #if new transaction is older
-            #     else:
-            #         #replace
-            #         self.state.transactions[trn-1] = {
-            #             "number": trn,
-            #             "from_username": from_user,
-            #             "to_username": to_user,
-            #             "timestamp": timestamp,
-            #             "approved": approved,
-            #             "approve_tx": approve_tx
-            #         }
-            #         #return ok
-            #         return self.create_message("o".encode(config.BYTE_ENCODING_TYPE))
-
 
     #function to get block count from neighbours
     def get_block_count(self):
@@ -206,10 +152,10 @@ class Protocol:
         return msg
 
     #function to create payload for send tx message
-    def __tx_payload(self, block):
+    def __tx_payload(self, transaction):
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", config.DB_MODEL+"_tx_content")
-        return fn(block)
+        return fn(transaction)
 
     #function to send tx
     def send_new_tx(self, transaction):
@@ -401,15 +347,21 @@ class Protocol:
         #get block with the same prev hash
         our_block, our_index = self.state.chain.get_block_with_prev_hash(new_block_prev_hash)
 
+        print("Received block with prev hash", new_block_prev_hash, ". Our index is ", our_index)
+
         #this is a flag which holds whether the received block is older than our block with the same prev hash
         older_block = False
 
+        #chekc if new block
+        new_block = our_index == -1
+
         #if not a new block
-        if our_index != -1:
+        if not new_block:
             #if new hash does not match, check if received block is older
             if payload_received["hash"] != our_block.hash:
                 #if our block is older, hence the original
-                if our_block.hashed_content.timestamp < payload_received["hashedContent"]["timestamp"]:
+                print("Comparing", our_block.hashed_content.timestamp, payload_received["hashedContent"]["timestamp"])
+                if int(our_block.hashed_content.timestamp) < int(payload_received["hashedContent"]["timestamp"]):
                     print("We found an older block on our chain with the same previous hash", new_block_prev_hash)
                     #send our block to the chain
                     return self.send_block("x", our_block)
@@ -423,24 +375,29 @@ class Protocol:
             #initialise block
             block = Block.load(payload_received["hashedContent"], payload_received["hash"])
             #verify block
-            verified = block.verify(self.state.database)
+            verified = block.verify(self.state.database, new_block)
 
             #if not verified
             if not verified:
                 print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
                 return
 
-            #perform block transfers
-            self.state.perform_transfers(block)
-
             #if is a completely new block
-            if our_index == -1:
+            if new_block:
                 #add block to chain
                 self.state.insert_block(block)
             #otherwise we need to replace the block with the same previous hash at the index obtained
             else:
+                #first we need to check if the block transfers were possible in that past block
+                transfers_acceptable = self.state.perform_check_transfers_past_block(block, our_index)        
                 print("Replacing block with hash", block.hash)
-                self.state.chain.replace_block(index, block)
+                self.state.chain.replace_block(our_index, block, self.state.database)
+
+            #perform block transfers
+            self.state.perform_transfers(block)
+
+            #reset mining tables
+            self.state.database.reset_mining_tables()
 
         return None
 
@@ -471,8 +428,11 @@ class Protocol:
         if not transfer_allowed:
             print("TX Transfer not allowed - sender out of funds")
             return
+
+        #make transfer to mining table
+        self.state.database.transfer(tx, False)
             
         #append tx to txs pool
-        self.state.transactions.append(tx)
+        self.state.add_pending_tx(tx)
 
 

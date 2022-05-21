@@ -40,7 +40,8 @@ class Block:
         self.hash = get_hash(payload)
 
     #function to verify block
-    def verify(self, database):
+    # new_block indicates whether it is a new block or an old block being verified. If it is an old block, transfers should not be checked (they are checked later)
+    def verify(self, database, new_block):
 
         #get content
         content = self.hashed_content.get_hashed_content()
@@ -64,12 +65,15 @@ class Block:
                 print("TX Hash failed to be verified")
                 return False
 
-            #check balance
-            transfer_allowed=database.check_transfer(tx)
+            #check transfers if new block
+            if(new_block):
+                #check balance
+                transfer_allowed=database.check_transfer(tx)
 
-            if not transfer_allowed:
-                print("TX Transfer not allowed - sender out of funds")
-                return False
+                if not transfer_allowed:
+                    print("HERE")
+                    print("TX Transfer not allowed - sender out of funds")
+                    return False
 
         #if all transactions passed, verify block
         return True

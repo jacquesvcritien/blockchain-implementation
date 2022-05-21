@@ -13,6 +13,7 @@ from miner import Miner
 from block import Block
 from chain import Chain
 from helper_utils import write_to_file
+import config as config
 
 if len(sys.argv) == 3:
     # Get "IP address of Server" and also the "port number" from argument 1 and argument 2
@@ -115,16 +116,19 @@ init()
 
 #check balance
 def check_balance():
-    print("Balance of "+str(state.user_initials)+" is: "+str(get_balance())+" WBE")
+    global state
+    global wallet
+    print(state.database.get_balance(wallet.public_key))
 
 #shows help
 def show_help():
     print("------ HELP ------") 
     print("check_balance: Checks the balance")
     print("send_wbe: Sends WBE")
-    print("send_wbe_approval: Sends WBE with approval from receiver")
+    print("print_balances: Prints balances")
+    print("print_chain: Prints the chain")
+    print("print_unspent_txs: Prints unspent txs")
     print("help: Prints help")
-    print("print_txs: Prints transactions")
 
 #sends wbe
 def send_wbe():
@@ -135,7 +139,7 @@ def send_wbe():
     while len(recipient) != 128:
         recipient = input("Enter address to send to: ").lower()
         if len(recipient) != 128:
-            print("Username must be the initials (128 characters long)")
+            print("Username must be the public key (128 characters long)")
         if recipient == wallet.public_key:
             print("Username must be different than yours")
             recipient = ""
@@ -144,20 +148,33 @@ def send_wbe():
         print("Not enough balance")
         return
 
-    # state.synchronize(protocol, peers)
-        
-    #get next tx number
-    # next_tx_number = state.network_tx_count
+    tx_to_spend = None
+    #if utxo, ask for tx hash
+    if config.DB_MODEL == "utxo":
+        tx_to_spend = ""
+        while len(tx_to_spend) != 64:
+            tx_to_spend = input("Enter tx hash to spend: ").lower()
+            if len(tx_to_spend) != 64:
+                print("TX Hash must be the 64 characters long")
 
     write_to_file("Sending new tx to "+recipient, state.logFile)
 
     #create tx 
-    new_tx = Transaction(wallet.public_key, recipient)
+    new_tx = Transaction(wallet.public_key, recipient, tx_to_spend)
     #sign tx
     wallet.sign_tx(new_tx)
 
+    #check transfer
+    transfer_possible = state.database.check_transfer(new_tx, False)
+    if not transfer_possible:
+        print("TX Hash does not exist or is already spent")
+        return
+
     #add tx to state
-    state.transactions.append(new_tx)
+    state.add_pending_tx(new_tx)
+
+    #perform transfer
+    state.database.transfer(new_tx, False)
 
     #generate tx msg
     send_new_tx_msg = protocol.send_new_tx(new_tx)
@@ -175,9 +192,12 @@ def print_balances():
 def print_chain():
     state.chain.print_chain()
 
-def print_unapproved_txs():
-    state.print_unapproved_txs()
+def print_unspent_txs():
+    global wallet
+    state.database.print_unspent_txs(wallet.public_key, False)
 
+def print_txs():
+    state.database.print_all_txs(False)
 
 #function to handle user actions
 def handleUserActions(command):
@@ -185,20 +205,18 @@ def handleUserActions(command):
         check_balance()
     elif command == "send_wbe":
         send_wbe()
-    elif command == "send_wbe_approval":
-        send_wbe_approval()
     elif command == "help":
         show_help()
     elif command == "print_txs":
         print_txs()
-    elif command == "print_unapproved_txs":
-        print_unapproved_txs()
-    elif command == "approve_tx":
-        approve_transaction()
+    elif command == "print_unspent_txs" and config.DB_MODEL == "utxo":
+        print_unspent_txs()
     elif command == "print_balances":
         print_balances()
     elif command == "print_chain":
         print_chain()
+    elif command == "print_txs":
+        print_txs()
 
 while True:
     cmd = input("\nEnter command: ")

@@ -38,7 +38,7 @@ class BlockHashedContent:
 
     #function to clear txs
     def reset_txs(self):
-        self.transactions = []
+        self.transactions.clear()
 
     #returns a json representation of the txs in the block
     def get_txs_json(self):

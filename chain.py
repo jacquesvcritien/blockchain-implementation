@@ -1,3 +1,5 @@
+import config as config
+
 class Chain:
     def __init__(self):
         self.blocks = []
@@ -12,7 +14,7 @@ class Chain:
         blocks_len = len(self.blocks)
         #if no blocks
         if(blocks_len==0):
-            return "0000000000000000000000000000000000000000000000000000000000000000"
+            return config.INITIAL_HASH
         else:
             return self.blocks[blocks_len-1].hash
 
@@ -40,10 +42,70 @@ class Chain:
         return None, -1
 
     #replace block with given index 
-    def replace_block(self, index, block):
-        self.blocks[index] = block
+    def replace_block(self, index, new_block, database):
 
-        #TODO: Revert old balances of bad block
+        #Revert balances from this index forward
+        for i in range (index, len(self.blocks)):
+            current_block = self.blocks[i]
+
+            #if account model
+            if config.DB_MODEL == "account":
+                database.revert_txs(current_block.hashed_content.transactions)
+            elif config.DB_MODEL == "utxo":
+                database.remove_txs(current_block.hashed_content.transactions)
+                #get unspent txs
+                unspent_balances = self.get_balances_at_block(index-1)
+                database.add_unspent_txs(unspent_balances)
+
+        self.blocks[index] = new_block
+        self.blocks = self.blocks[0:index+1]
+
+    
+    #function to get balance at block
+    def get_balances_at_block(self, block_index):
+        #init balance
+        balances = {}
+
+        #if account model
+        if config.DB_MODEL == "account":
+            #for each block until passed index
+            for i in range(0, block_index+1):
+                #for each tx in block
+                for tx in self.blocks[i].hashed_content.transactions:
+
+                    sender = tx.hashed_content.signed_content.from_ac
+                    receiver = tx.hashed_content.signed_content.to_ac
+
+                    #if a key for receiver does not exist, add it
+                    if receiver not in balances:
+                        balances[receiver] = []
+
+                    #if account is sender, decrease balance
+                    balances[sender] -= 1
+                    #if account is receiver, increase balance
+                    balances[receiver] += 1
+        #if account model is utxo
+        elif config.DB_MODEL == "utxo":
+            #for each block until passed index
+            for i in range(0, block_index+1) :
+                #for each tx in block
+                for tx in self.blocks[i].hashed_content.transactions:
+
+                    sender = tx.hashed_content.signed_content.from_ac
+                    receiver = tx.hashed_content.signed_content.to_ac
+
+                    #if a key for receiver does not exist, add it
+                    if receiver not in balances:
+                        balances[receiver] = []
+                    #add unspent tx to receiver
+                    balances[receiver].append(tx.hash)
+
+                    #if not a mined tx
+                    if sender != config.MINING_SENDER:
+                        #remove unspent tx
+                        balances[sender].remove(tx.hashed_content.signed_content.spent_tx)
+
+        return balances
 
     #function to print chain
     def print_chain(self):

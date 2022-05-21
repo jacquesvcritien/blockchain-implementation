@@ -30,7 +30,7 @@ class Transaction:
 
         # #hash the payload
         # content_hash = hashlib.sha256(payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
-        
+         
         #get signing key
         priv_key = bytes.fromhex(wallet.private_key)
         sk = ecdsa.SigningKey.from_string(priv_key, curve=ecdsa.SECP256k1)
@@ -56,6 +56,7 @@ class Transaction:
 
         #calculate hash
         tx_payload = json.dumps(tx)
+
         hash_to_verify = hashlib.sha256(tx_payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
         
         #ensure hash matches content
@@ -66,7 +67,7 @@ class Transaction:
         #load verifying key
         #if sender is 0, load private key of receiver, otherwise of sender
         sender = self.hashed_content.signed_content.from_ac
-        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(sender), curve=ecdsa.SECP256k1) if sender != "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" else ecdsa.VerifyingKey.from_string(bytes.fromhex(self.hashed_content.signed_content.to_ac), curve=ecdsa.SECP256k1)
+        vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(sender), curve=ecdsa.SECP256k1) if sender != config.MINING_SENDER else ecdsa.VerifyingKey.from_string(bytes.fromhex(self.hashed_content.signed_content.to_ac), curve=ecdsa.SECP256k1)
        
         try: 
             #get signed content as json string

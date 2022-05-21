@@ -11,7 +11,7 @@ class Wallet:
 
         #if file exists, read public and private key, otherwise create them
         if(file_exists):
-            #open fike
+            #open file
             with open(filename) as f:
                 lines = f.read().split('\n', 1)
                 self.private_key = lines[0].split("Private key: ")[1]
