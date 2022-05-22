@@ -29,9 +29,6 @@ class Block:
     #function to calculate hash of block
     def calculate_hash(self):
 
-        #set date
-        self.hashed_content.timestamp = int(round(time.time() * 1000))
-
         #get content
         content = self.hashed_content.get_hashed_content()
         payload = json.dumps(content)
@@ -78,5 +75,12 @@ class Block:
         #if all transactions passed, verify block
         return True
 
+    #function to get block proposer
+    def get_block_proposer(self):
+        #go through each tx
+        for tx in self.hashed_content.transactions:
+            #if sender is 0
+            if tx.hashed_content.signed_content.from_ac == config.MINING_SENDER:
+                return tx.hashed_content.signed_content.to_ac
     
 

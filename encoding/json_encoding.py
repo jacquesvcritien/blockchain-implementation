@@ -107,3 +107,15 @@ def handle_utxo_transaction(cmd):
 
     return payload_received
 
+#function to create JSON message for discover msg
+def discover_content(pk):
+    payload = {
+        "pk": pk
+    }
+    payload = json.dumps(payload)
+    return payload.encode(config.BYTE_ENCODING_TYPE)
+
+#function to handle public key message from peers
+def handle_pk_msg(cmd):
+    payload_received = json.loads(cmd[1:len(cmd)])["pk"]
+    return payload_received

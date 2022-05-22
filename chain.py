@@ -3,6 +3,7 @@ import config as config
 class Chain:
     def __init__(self):
         self.blocks = []
+        self.possible_blocks = {}
 
     #function to add a block
     def add_block(self, block):
@@ -41,8 +42,18 @@ class Chain:
 
         return None, -1
 
+    #function to check if hash is last hash
+    def is_hash_last_block(self, hash):
+
+        if len(self.blocks) == 0:
+            return False
+
+        return hash == self.blocks[-1].hash
+
     #replace block with given index 
     def replace_block(self, index, new_block, database):
+
+        print("Replacing block", index+1)
 
         #Revert balances from this index forward
         for i in range (index, len(self.blocks)):

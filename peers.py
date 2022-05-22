@@ -1,3 +1,5 @@
+import time
+
 nodes = [
     {
         "ip":"127.0.0.1",
@@ -15,6 +17,7 @@ class Peers:
         self.peers = nodes
         self.ip = ip
         self.port = port
+        self.pings = {}
 
     def check_in_peers(self, ip, port):
         for peer in self.peers:
@@ -36,8 +39,11 @@ class Peers:
             if not found:
                 self.add_to_peers(addr[0], addr[1])
 
+            #get msg start
+            stx = chr(data[0])
+
             #process msg and get reply to send
-            replies = protocol.process_message_bytes(data, self)
+            replies = protocol.process_message(data, self, addr[0], addr[1])
 
             #for each reply
             if replies:
@@ -53,3 +59,25 @@ class Peers:
         for peer in self.peers:
             if peer["ip"] != self.ip or peer["port"] != self.port:
                 self.socket.sendto(message, (peer["ip"], peer["port"]))
+
+    def add_pk_to_peer(self, ip, port, pk):
+        found = False
+        for peer in self.peers:
+            if peer["ip"] == ip and peer["port"] == port:
+                peer["public_key"] = pk
+                found = True
+        
+        if not found:
+            self.peers.append({ "ip":IP, "port":port, "public_key":pk })
+
+    def received_peer_ping(self, pk):
+        self.pings[pk] = int(round(time.time() * 1000))
+
+    def check_peers(self):
+        milliseconds_now = int(round(time.time() * 1000))
+        for ping in self.pings:
+            #if more than 20 seconds since last ping, remove pk
+            if self.pings[ping] + 20000 < milliseconds_now:
+                for peer in self.peers:
+                    if peer["public_key"] == ping:
+                        del peer["public_key"]

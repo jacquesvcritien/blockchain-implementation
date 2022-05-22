@@ -13,7 +13,7 @@ class Protocol:
         self.state = state
 
     #function to process a message
-    def process_message_bytes(self, message, peers):
+    def process_message(self, message, peers, sender_ip, sender_port):
 
         #check command size
         if chr(message[0]) != '2':
@@ -65,12 +65,19 @@ class Protocol:
             return [reply_msg]
         #if got new block
         elif first_letter == 'z' or first_letter == 'x':
-            reply_msg = self.__handle_new_block(cmd)
-            return [reply_msg]
+            reply_msgs = self.__handle_new_block(cmd, first_letter == 'z')
+            return reply_msgs
         #if got new tx
         if first_letter == 't':
             self.__handle_new_tx(cmd)
             return [None]
+        #if got new public key
+        if first_letter == 'd':
+            pk = self.__handle_pk(cmd)
+            peers.received_peer_ping(pk)
+            peers.add_pk_to_peer(sender_ip, sender_port, pk)
+            return [None]
+
 
     #function to get block count from neighbours
     def get_block_count(self):
@@ -168,6 +175,19 @@ class Protocol:
         
         #create msg
         msg_to_send = self.create_message(new_tx_msg)
+        return msg_to_send
+
+    #function to send tx
+    def get_peers_pks(self):
+        #prepare message to return
+        msg_to_send = bytearray()
+        #add initial character
+        msg_to_send += "d".encode(config.BYTE_ENCODING_TYPE)
+        #get public key
+        public_key = self.state.public_key
+        #append payload to message
+        msg_to_send += self.__discover_payload(public_key)
+        msg_to_send = self.create_message(msg_to_send)
         return msg_to_send
 
     def send_new_tx_bytes(self, transaction):
@@ -280,10 +300,12 @@ class Protocol:
         if len(received_hashes) > self.state.local_block_count:
             index = 1
             #for each hash
+            print(received_hashes)
             for hash in received_hashes:
                 #if block hash does not match our block hash, request block
                 if self.state.chain.get_block_hash(index) != hash:
                     # print("Requesting hash", hash)
+                    print("Requesting block", index, self.state.chain.get_block_hash(index))
                     messages_to_send.append(self.request_block(hash))
 
                 #increment counter
@@ -333,7 +355,7 @@ class Protocol:
         return msg_to_send
 
     #function to handle new block message
-    def __handle_new_block(self, cmd):
+    def __handle_new_block(self, cmd, new_block):
         #write log
         write_to_file("GOT NEW BLOCK MSG", self.state.logFile)
 
@@ -346,60 +368,103 @@ class Protocol:
         new_block_prev_hash = payload_received["hashedContent"]["prev_hash"]
         #get block with the same prev hash
         our_block, our_index = self.state.chain.get_block_with_prev_hash(new_block_prev_hash)
+        #check if new block prev hash is the last has in our chain
+        prev_hash_last_block = self.state.chain.is_hash_last_block(new_block_prev_hash)
+        
+        replace_block = False
 
-        print("Received block with prev hash", new_block_prev_hash, ". Our index is ", our_index)
-
-        #this is a flag which holds whether the received block is older than our block with the same prev hash
-        older_block = False
-
-        #chekc if new block
-        new_block = our_index == -1
-
+        #initialise block
+        block = Block.load(payload_received["hashedContent"], payload_received["hash"])
+        
         #if not a new block
-        if not new_block:
-            #if new hash does not match, check if received block is older
-            if payload_received["hash"] != our_block.hash:
-                #if our block is older, hence the original
-                print("Comparing", our_block.hashed_content.timestamp, payload_received["hashedContent"]["timestamp"])
-                if int(our_block.hashed_content.timestamp) < int(payload_received["hashedContent"]["timestamp"]):
-                    print("We found an older block on our chain with the same previous hash", new_block_prev_hash)
-                    #send our block to the chain
-                    return self.send_block("x", our_block)
-                #otherwise we need to verify
-                else:
-                    older_block = True
-                    print("Need to check hash", payload_received["hash"])
+        if (not new_block or our_index != -1) and not prev_hash_last_block:
+            #get function from module
+            handle_old_block = get_module_fn("miners."+config.MINING_TYPE+"_miner", "handle_old_block")
+            #this is a flag which holds whether the received block should be replacing our block
+            replace_block, msg = handle_old_block(self, block, our_block, our_index, payload_received, new_block_prev_hash)
+            if replace_block:
+                print("Should replace block")
+
+            #if a message needs to be sent
+            if msg != None:
+                return msg
 
         #if it is a completely new block or an older block which needs to be verified
-        if older_block or our_block == None:
-            #initialise block
-            block = Block.load(payload_received["hashedContent"], payload_received["hash"])
+        if replace_block or new_block or prev_hash_last_block:
             #verify block
             verified = block.verify(self.state.database, new_block)
 
             #if not verified
             if not verified:
                 print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
-                return
+                return [False]
 
             #if is a completely new block
-            if new_block:
+            if (new_block or prev_hash_last_block) and our_index == -1:
                 #add block to chain
                 self.state.insert_block(block)
             #otherwise we need to replace the block with the same previous hash at the index obtained
             else:
-                #first we need to check if the block transfers were possible in that past block
-                transfers_acceptable = self.state.perform_check_transfers_past_block(block, our_index)        
-                print("Replacing block with hash", block.hash)
+                # first we need to check if the block transfers were possible in that past block
+                transfers_acceptable = self.state.perform_check_transfers_past_block(block, our_index)   
                 self.state.chain.replace_block(our_index, block, self.state.database)
+                #perform block transfers
+                self.state.perform_transfers(block)
+                #reset mining tables
+                self.state.database.reset_mining_tables()
 
-            #perform block transfers
-            self.state.perform_transfers(block)
+                #reset counts
+                self.state.local_block_count = len(self.state.chain.blocks)
+                self.state.network_block_count = len(self.state.chain.blocks)
+                
 
-            #reset mining tables
-            self.state.database.reset_mining_tables()
+        # #this is a flag which holds whether the received block is older than our block with the same prev hash
+        # older_block = False
 
-        return None
+        # #if not a new block
+        # if not new_block:
+        #     #if new hash does not match, check if received block is older
+        #     if payload_received["hash"] != our_block.hash:
+        #         #if our block is older, hence the original
+        #         if int(our_block.hashed_content.timestamp) < int(payload_received["hashedContent"]["timestamp"]):
+        #             print("We found an older block on our chain with the same previous hash", new_block_prev_hash)
+        #             #send our block to the chain
+        #             return self.send_block("x", our_block)
+        #         #otherwise we need to verify
+        #         else:
+        #             older_block = True
+        #             print("Need to check hash", payload_received["hash"])
+
+        # #if it is a completely new block or an older block which needs to be verified
+        # if older_block or new_block:
+        #     #initialise block
+        #     block = Block.load(payload_received["hashedContent"], payload_received["hash"])
+        #     #verify block
+        #     verified = block.verify(self.state.database, new_block)
+
+        #     #if not verified
+        #     if not verified:
+        #         print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
+        #         return
+
+        #     #if is a completely new block
+        #     if new_block:
+        #         #add block to chain
+        #         self.state.insert_block(block)
+        #     #otherwise we need to replace the block with the same previous hash at the index obtained
+        #     else:
+        #         #first we need to check if the block transfers were possible in that past block
+        #         transfers_acceptable = self.state.perform_check_transfers_past_block(block, our_index)        
+        #         print("Replacing block with hash", block.hash)
+        #         self.state.chain.replace_block(our_index, block, self.state.database)
+
+        #     #perform block transfers
+        #     self.state.perform_transfers(block)
+
+        #     #reset mining tables
+        #     self.state.database.reset_mining_tables()
+
+        return [None]
 
     #function to handle new transaction message
     def __handle_new_tx(self, cmd):
@@ -435,4 +500,21 @@ class Protocol:
         #append tx to txs pool
         self.state.add_pending_tx(tx)
 
+    #function to create payload for  discover message
+    def __discover_payload(self, transaction):
+        #get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "discover_content")
+        return fn(transaction)
 
+
+
+    #function to handle new pk message
+    def __handle_pk(self, cmd):
+        write_to_file("GOT PK MSG", self.state.logFile)
+
+        ##get function from module
+        fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "handle_pk_msg")
+        #get public_key
+        received_pk = fn(cmd)
+
+        return received_pk

@@ -35,42 +35,47 @@ def bytes_needed_for_txs_len(txs_len):
 
 #function to create BYTE message for block message
 def block_content(block):
-    #init message to send
-    msg_to_send = bytearray()
-    #append hash
-    msg_to_send += block.hash.encode(config.BYTE_ENCODING_TYPE)
-    #append previous hash
-    msg_to_send += block.hashed_content.prev_hash.encode(config.BYTE_ENCODING_TYPE)
-    #append nonce - 5 bytes
-    msg_to_send += block.hashed_content.nonce.to_bytes(5, byteorder="big")
-    #append timestamp - 6 bytes
-    msg_to_send += block.hashed_content.timestamp.to_bytes(6, byteorder="big")
-    #append number of bytes needed for tx length
-    txs_len = len(block.hashed_content.transactions)
-    bytes_needed_for_txs = bytes_needed_for_txs_len(txs_len)
-    msg_to_send += bytes_needed_for_txs.to_bytes(1, byteorder="big")
-    #append number of txs
-    msg_to_send += txs_len.to_bytes(bytes_needed_for_txs, byteorder="big")
 
-    #for each transaction
-    for tx in block.hashed_content.transactions:
-        #add tx's hash
-        msg_to_send += tx.hash.encode(config.BYTE_ENCODING_TYPE)
-        #add tx's sender
-        msg_to_send += tx.hashed_content.signed_content.from_ac.encode(config.BYTE_ENCODING_TYPE)
-        #add txs's receiver
-        msg_to_send += tx.hashed_content.signed_content.to_ac.encode(config.BYTE_ENCODING_TYPE)
+    #just in case block was removed
+    if block != None:
+        #init message to send
+        msg_to_send = bytearray()
+        #append hash
+        msg_to_send += block.hash.encode(config.BYTE_ENCODING_TYPE)
+        #append previous hash
+        msg_to_send += block.hashed_content.prev_hash.encode(config.BYTE_ENCODING_TYPE)
+        #append nonce - 5 bytes
+        msg_to_send += block.hashed_content.nonce.to_bytes(5, byteorder="big")
+        #append timestamp - 6 bytes
+        msg_to_send += block.hashed_content.timestamp.to_bytes(6, byteorder="big")
+        #append number of bytes needed for tx length
+        txs_len = len(block.hashed_content.transactions)
+        bytes_needed_for_txs = bytes_needed_for_txs_len(txs_len)
+        msg_to_send += bytes_needed_for_txs.to_bytes(1, byteorder="big")
+        #append number of txs
+        msg_to_send += txs_len.to_bytes(bytes_needed_for_txs, byteorder="big")
 
-        #add tx's signature
-        msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
+        #for each transaction
+        for tx in block.hashed_content.transactions:
+            #add tx's hash
+            msg_to_send += tx.hash.encode(config.BYTE_ENCODING_TYPE)
+            #add tx's sender
+            msg_to_send += tx.hashed_content.signed_content.from_ac.encode(config.BYTE_ENCODING_TYPE)
+            #add txs's receiver
+            msg_to_send += tx.hashed_content.signed_content.to_ac.encode(config.BYTE_ENCODING_TYPE)
 
-        #if config is utxo model
-        if(config.DB_MODEL == "utxo"):
-            #add spent tx
-            msg_to_send += tx.hashed_content.signed_content.spent_tx.encode(config.BYTE_ENCODING_TYPE)
+            #add tx's signature
+            msg_to_send += tx.hashed_content.signature.encode(config.BYTE_ENCODING_TYPE)
+
+            #if config is utxo model
+            if(config.DB_MODEL == "utxo"):
+                #add spent tx
+                msg_to_send += tx.hashed_content.signed_content.spent_tx.encode(config.BYTE_ENCODING_TYPE)
 
 
-    return msg_to_send
+        return msg_to_send
+    else:
+        return None
 
 #function to create empty BYTE message
 def empty_content():
@@ -286,5 +291,21 @@ def handle_utxo_transaction(cmd):
     end_index += 64
     tx["hashedContent"]["spent_tx"] = cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)
 
-
     return tx
+
+#function to create JSON message for discover msg
+def discover_content(pk):
+    #init message to send
+    msg_to_send = bytearray()
+    #append hash
+    msg_to_send += pk.encode(config.BYTE_ENCODING_TYPE)
+    return msg_to_send
+
+#function to handle public key message from peers
+def handle_pk_msg(cmd):
+    #start index to obtain
+    start_index = 1
+    #end index to obtain
+    end_index = 129
+    #get public key
+    return cmd[start_index:end_index].decode(config.BYTE_ENCODING_TYPE)

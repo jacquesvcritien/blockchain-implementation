@@ -18,20 +18,22 @@ class Database:
         unspent_txs = []
         # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
-            for tx in block.hashed_content.transactions:
-                #get hash, receiver and spent tx
-                hash = tx.hash
-                receiver = tx.hashed_content.signed_content.to_ac
-                sender = tx.hashed_content.signed_content.from_ac
-                spent_tx = tx.hashed_content.signed_content.spent_tx
+            #if block is confirmed
+            if block.hashed_content.timestamp != None:
+                for tx in block.hashed_content.transactions:
+                    #get hash, receiver and spent tx
+                    hash = tx.hash
+                    receiver = tx.hashed_content.signed_content.to_ac
+                    sender = tx.hashed_content.signed_content.from_ac
+                    spent_tx = tx.hashed_content.signed_content.spent_tx
 
-                #if receiver, add tx to spent tx
-                if receiver == account:
-                    unspent_txs.append(hash)
+                    #if receiver, add tx to spent tx
+                    if receiver == account:
+                        unspent_txs.append(hash)
 
-                #if spent tx is in unspent txs, remove it
-                if spent_tx in unspent_txs and sender == account:
-                    unspent_txs.remove(spent_tx)
+                    #if spent tx is in unspent txs, remove it
+                    if spent_tx in unspent_txs and sender == account:
+                        unspent_txs.remove(spent_tx)
 
         if not actual:
             for tx in self.pending_txs:
@@ -57,20 +59,22 @@ class Database:
         unspent_txs = []
         # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
-            for tx in block.hashed_content.transactions:
-                #get hash, receiver and spent tx
-                hash = tx.hash
-                receiver = tx.hashed_content.signed_content.to_ac
-                sender = tx.hashed_content.signed_content.from_ac
-                spent_tx = tx.hashed_content.signed_content.spent_tx
+            #if block is confirmed
+            if block.hashed_content.timestamp != None:
+                for tx in block.hashed_content.transactions:
+                    #get hash, receiver and spent tx
+                    hash = tx.hash
+                    receiver = tx.hashed_content.signed_content.to_ac
+                    sender = tx.hashed_content.signed_content.from_ac
+                    spent_tx = tx.hashed_content.signed_content.spent_tx
 
-                #if receiver, add tx to spent tx
-                if receiver == account:
-                    unspent_txs.append(hash)
+                    #if receiver, add tx to spent tx
+                    if receiver == account:
+                        unspent_txs.append(hash)
 
-                #if spent tx is in unspent txs, remove it
-                if spent_tx in unspent_txs and sender == account:
-                    unspent_txs.remove(spent_tx)
+                    #if spent tx is in unspent txs, remove it
+                    if spent_tx in unspent_txs and sender == account:
+                        unspent_txs.remove(spent_tx)
 
         if not actual:
             for tx in self.pending_txs:
@@ -96,22 +100,24 @@ class Database:
         balances = {}
         # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
-            for tx in block.hashed_content.transactions:
-                #get hash, receiver and spent tx
-                hash = tx.hash
-                receiver = tx.hashed_content.signed_content.to_ac
-                sender = tx.hashed_content.signed_content.from_ac
-                spent_tx = tx.hashed_content.signed_content.spent_tx
+            #if block is confirmed
+            if block.hashed_content.timestamp != None:
+                for tx in block.hashed_content.transactions:
+                    #get hash, receiver and spent tx
+                    hash = tx.hash
+                    receiver = tx.hashed_content.signed_content.to_ac
+                    sender = tx.hashed_content.signed_content.from_ac
+                    spent_tx = tx.hashed_content.signed_content.spent_tx
 
-                if receiver not in balances:
-                    balances[receiver] = []
+                    if receiver not in balances:
+                        balances[receiver] = []
 
-                #if receiver, add tx to spent tx
-                balances[receiver].append(hash)
+                    #if receiver, add tx to spent tx
+                    balances[receiver].append(hash)
 
-                #if spent tx is in unspent txs, remove it
-                if sender != config.MINING_SENDER:
-                    balances[sender].remove(spent_tx)
+                    #if spent tx is in unspent txs, remove it
+                    if sender != config.MINING_SENDER:
+                        balances[sender].remove(spent_tx)
 
         if not actual:
             for tx in self.pending_txs:
@@ -145,13 +151,6 @@ class Database:
         #check if the sender has an unspent tx
         if tx.hashed_content.signed_content.spent_tx not in unspent_txs and from_ac != config.MINING_SENDER:
             return False
-
-        # #add tx to last block
-        # if len(self.chains[chain_type].blocks) == 0:
-        #     block = Block(config.INITIAL_HASH)
-        #     self.chains[chain_type].blocks.append(block)
-
-        # self.chains[chain_type].blocks[-1].hashed_content.transactions.append(tx)
 
     #function to check if a transfer is possible
     def check_transfer(self, tx, actual=True):

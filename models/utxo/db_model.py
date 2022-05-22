@@ -28,10 +28,10 @@ class Database:
 
     #function to get balance of account
     def get_balance(self, account, actual=True):
+        unspent_table_name = "unspent_txs" if actual else "mining_unspent_txs"
+        txs_table_name = "txs" if actual else "mining_txs"
         #get balance
-        table_name = "unspent_txs" if actual else "mining_unspent_txs"
-        #get balance
-        balance = self.db_safe_execute("SELECT count(*) from "+table_name+" inner join txs where unspent_txs.tx = txs.hash and txs.to_ac = '"+account+"'").fetchall()[0][0]
+        balance = self.db_safe_execute("SELECT count(*) from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx = "+txs_table_name+".hash and "+txs_table_name+".to_ac = '"+account+"'").fetchall()[0][0]
         return balance
 
     #function to get balance of account
@@ -95,9 +95,6 @@ class Database:
         #check if the sender has an unspent tx with that number
         mined_tx = from_ac == config.MINING_SENDER
 
-        if not mined_tx:
-            self.print_mining_tables(from_ac)
-        
         #check if sender can spend the unspent tx
         has_unspend_tx = self.db_safe_execute("select count(*) from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx = "+txs_table_name+".hash and "+unspent_table_name+".tx = '"+spent_tx+"' and "+txs_table_name+".to_ac = '"+from_ac+"'").fetchall()[0][0] < 1
         if(has_unspend_tx and not mined_tx):

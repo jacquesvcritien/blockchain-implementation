@@ -3,6 +3,7 @@ from block import Block
 from helper_utils import get_needed_hash_substring
 import time
 import config as config
+from helper_utils import get_module_fn
 from helper_utils import write_to_file
 
 class Miner:
@@ -14,42 +15,42 @@ class Miner:
         self.peers = peers
         self.logFile = open('logs/mine_log_'+str(state.port)+'.txt', 'w')
 
-    #function to mine block
-    def mine(self, block, block_num_to_mine):
+    # #function to mine block
+    # def mine(self, block, block_num_to_mine):
 
-        #start timer
-        start_time = time.time()
+    #     #start timer
+    #     start_time = time.time()
 
-        #needed hash substring not in content hash
-        while(not block.hash.startswith(get_needed_hash_substring(config.HASHING_CONSECUTIVE_ZEROS))):
+    #     #needed hash substring not in content hash
+    #     while(not block.hash.startswith(get_needed_hash_substring(config.HASHING_CONSECUTIVE_ZEROS))):
 
-            #if state transactions pool > previous block transactions, reset nonce
-            if(len(self.state.transactions) > len(block.hashed_content.transactions)-1):
-                #reset nonce
-                block.reset_nonce()
-                #reset txs
-                block.hashed_content.reset_txs()
-                #add mining_tx
-                block.hashed_content.add_transaction(self.current_mining_tx)
-                #add pending txs
-                block.hashed_content.add_pending_txs(self.state.transactions)
+    #         #if state transactions pool > previous block transactions, reset nonce
+    #         if(len(self.state.transactions) > len(block.hashed_content.transactions)-1):
+    #             #reset nonce
+    #             block.reset_nonce()
+    #             #reset txs
+    #             block.hashed_content.reset_txs()
+    #             #add mining_tx
+    #             block.hashed_content.add_transaction(self.current_mining_tx)
+    #             #add pending txs
+    #             block.hashed_content.add_pending_txs(self.state.transactions)
             
-            #if not synced or block is found, halt mining
-            if not self.state.is_synced() or self.state.local_block_count >= block_num_to_mine:
-                return False
+    #         #if not synced or block is found, halt mining
+    #         if not self.state.is_synced() or self.state.local_block_count >= block_num_to_mine:
+    #             return False
 
-            #increase nonce 
-            block.increase_nonce()
-            #calculate hash
-            block.calculate_hash()
+    #         #increase nonce 
+    #         block.increase_nonce()
+    #         #calculate hash
+    #         block.calculate_hash()
 
-        write_to_file("Found hash "+block.hash+" for block "+str(len(self.chain.blocks)+1), self.logFile)
-        write_to_file("--- "+str(time.time() - start_time)+" seconds ---", self.logFile)
+    #     write_to_file("Found hash "+block.hash+" for block "+str(len(self.chain.blocks)+1), self.logFile)
+    #     write_to_file("--- "+str(time.time() - start_time)+" seconds ---", self.logFile)
 
-        if self.state.is_synced() and block_num_to_mine > self.state.local_block_count:
-            #clear pending txs
-            self.state.transactions.clear()
-            return True
+    #     if self.state.is_synced() and block_num_to_mine > self.state.local_block_count:
+    #         #clear pending txs
+    #         self.state.transactions.clear()
+    #         return True
 
 
     #function to mine
@@ -66,29 +67,27 @@ class Miner:
                 #generate a transaction for the receipt of the mining conpensation
                 self.current_mining_tx = self.add_transaction()
                 #add mining_tx
+                # self.state.transactions.append(self.current_mining_tx)
                 block.hashed_content.add_transaction(self.current_mining_tx)
 
                 #get block number to mine
                 block_num_to_mine = len(self.chain.blocks)+1
                 #mine
-                mined = self.mine(block, block_num_to_mine)
+                mine = get_module_fn("miners."+config.MINING_TYPE+"_miner", "mine")
+                mined = mine(self, block, block_num_to_mine)
 
                 #if successfully mined
                 if mined:
-                    #perform transfers
-                    self.state.perform_transfers(block)
+                    #if previous hash matches previous block's hash
+                    if(block_num_to_mine == 1 or block.hashed_content.prev_hash == self.chain.blocks[block_num_to_mine-2].hash):
+                        #add block
+                        self.state.insert_block(block)
 
-                    #add block
-                    self.state.insert_block(block)
+                        print("Found block", block_num_to_mine)
 
-                    #send new block to neighbours
-                    new_block_msg = self.protocol.new_block(block)
-                    self.peers.broadcast_message(new_block_msg)
-                    #reset mining balances
-                    self.state.database.reset_mining_tables()
-                    print("Found block")
-                else:
-                    self.state.synchronize(self.protocol, self.peers)
+                        #send new block to neighbours
+                        new_block_msg = self.protocol.new_block(block)
+                        self.peers.broadcast_message(new_block_msg)
             else:
                 self.state.synchronize(self.protocol, self.peers)
 

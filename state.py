@@ -6,7 +6,7 @@ from helper_utils import get_module_fn
 from helper_utils import write_to_file
 
 class State:
-    def __init__(self, port, chain):
+    def __init__(self, ip, port, chain):
         self.user_initials = ""
         self.transactions = []
         self.chain = chain
@@ -14,6 +14,7 @@ class State:
         self.network_block_count = 0
         #read username
         self.read_username()
+        self.ip = ip
         self.port = port
 
         #init database
@@ -34,6 +35,9 @@ class State:
         peers.broadcast_message(get_blocks_count_msg)
 
         write_to_file("Syncing and asking for block count", self.logFile)
+
+        peers_pks_msg = protocol.get_peers_pks()
+        peers.broadcast_message(peers_pks_msg)
 
     #function to read a username
     def read_username(self):
@@ -94,6 +98,7 @@ class State:
 
     #function to insert block
     def insert_block(self, block):
+
         #increment local count
         self.local_block_count += 1
         self.transactions.clear()
@@ -102,8 +107,23 @@ class State:
         if(self.local_block_count > self.network_block_count):
             self.network_block_count = self.local_block_count
 
-        #add block to chain
-        self.chain.add_block(block)
+        #check if there exists a block with same previous hash
+        #get block with the same prev hash
+        our_block, our_index = self.chain.get_block_with_prev_hash(block.hashed_content.prev_hash)
+
+        #if we have no block
+        if our_index == -1:
+            #add block to chain
+            self.chain.add_block(block)
+        else:
+            transfers_acceptable = self.perform_check_transfers_past_block(block, our_index)   
+            self.chain.replace_block(our_index, block, self.database)
+
+        #perform transfers
+        self.perform_transfers(block)
+
+        #reset mining balances
+        self.database.reset_mining_tables()
 
     #print transactions
     def print_txs(self):
@@ -116,8 +136,8 @@ class State:
         self.write_txs_to_file()
 
     #calculates the balance of a user
-    def get_balance(self, address):
-        return self.database.get_balance(address)
+    def get_balance(self, address, actual=True):
+        return self.database.get_balance(address, actual)
 
     #function to write to file
     def write_txs_to_file(self):
@@ -141,17 +161,21 @@ class State:
             sender = tx.hashed_content.signed_content.from_ac
             receiver = tx.hashed_content.signed_content.to_ac
 
+            if receiver not in past_balances:
+                past_balances[receiver] = 0
+
             #if account based
             if config.DB_MODEL == "account":
-                if past_balances[sender] < 1:
-                    return False
-                past_balances[sender] -= 1
+                if sender != config.MINING_SENDER:
+                    if past_balances[sender] < 1:
+                        return False
+                    past_balances[sender] -= 1
+
                 past_balances[receiver] += 1
 
             #if utxo based
             if config.DB_MODEL == "utxo":
                 spent_tx = tx.hashed_content.signed_content.spent_tx
-
 
                 #if spent tx not in unspent txs
                 if sender != config.MINING_SENDER:
@@ -179,4 +203,8 @@ class State:
     #function to add pending tx
     def add_pending_tx(self, pending_tx):
         self.transactions.append(pending_tx)
+
+    #function to set public key
+    def set_pk(self, pk):
+        self.public_key = pk
 

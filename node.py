@@ -28,7 +28,7 @@ peers = []
 s = None
 # init chain
 chain = Chain()
-state = State(port, chain)
+state = State(ip, port, chain)
 protocol = Protocol(state)
 wallet = None
 miner = None
@@ -53,6 +53,13 @@ def check_sync():
         #sleep for 5 seconds
         time.sleep(5)
 
+def check_peers():
+    global peers
+    #syncronize
+    while True:
+        peers.check_peers()
+        #sleep for 5 seconds
+        time.sleep(10)
 
 def init():
     global peers
@@ -77,6 +84,9 @@ def init():
 
     #init wallet
     wallet = Wallet(state.user_initials)
+    #set pk
+    state.set_pk(wallet.public_key)
+    peers.add_pk_to_peer(ip, port, wallet.public_key)
     #init miner
     miner = Miner(wallet, chain, state, protocol, peers)
 
@@ -91,6 +101,10 @@ def init():
 
     mining = threading.Thread(target=miner.run, args=[])
     mining.start()
+
+    #check peers every 10 seconds
+    peer_check = threading.Thread(target=check_peers)
+    peer_check.start()
 
     # transaction = Transaction("JV", "NF")
     # # transaction.calculate_hash()
@@ -144,7 +158,8 @@ def send_wbe():
             print("Username must be different than yours")
             recipient = ""
 
-    if state.get_balance(wallet.public_key) < 1:
+    balance = state.get_balance(wallet.public_key, False)
+    if balance < 1:
         print("Not enough balance")
         return
 
@@ -167,7 +182,10 @@ def send_wbe():
     #check transfer
     transfer_possible = state.database.check_transfer(new_tx, False)
     if not transfer_possible:
-        print("TX Hash does not exist or is already spent")
+        if config.MINING_TYPE == "account":
+            print("Not enough balance")
+        if config.MINING_TYPE == "utxo":
+            print("TX Hash does not exist or is already spent")
         return
 
     #add tx to state
@@ -186,7 +204,7 @@ def print_txs():
 
 #function to print balances
 def print_balances():
-    state.database.print_balances()
+    state.database.print_balances(False)
 
 #function to print chain
 def print_chain():
