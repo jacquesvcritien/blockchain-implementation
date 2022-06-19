@@ -7,6 +7,14 @@ from helper_utils import write_to_file
 
 class State:
     def __init__(self, ip, port, chain):
+        """
+        Class initialiser
+
+        :param ip: the ip listening on
+        :param port: the port listening on
+        :param chain: reference to the initialised chain
+        """
+        
         self.user_initials = ""
         self.transactions = []
         self.chain = chain
@@ -29,8 +37,14 @@ class State:
 
         self.logFile = open('logs/log_'+str(port)+'.txt', 'w')
 
-    #function to synchronize
     def synchronize(self, protocol, peers):
+        """ 
+        Function synchronise
+
+        :param protocol: protocol used
+        :param peers: peers to synchronise with
+        """
+
         get_blocks_count_msg = protocol.get_block_count()
         peers.broadcast_message(get_blocks_count_msg)
 
@@ -39,8 +53,11 @@ class State:
         peers_pks_msg = protocol.get_peers_pks()
         peers.broadcast_message(peers_pks_msg)
 
-    #function to read a username
     def read_username(self):
+        """ 
+        Function to read username
+        """
+
         #keep reading input until its valid 
         while len(self.user_initials) != 2:
             self.user_initials = input("Enter your username: ").upper()
@@ -49,29 +66,37 @@ class State:
 
         print("Logged in as "+self.user_initials)
 
-    #function to read a transaction
     def get_transaction(self, trn):
+        """ 
+        Function to read a transaction
+
+        :param trn: index of transaction
+
+        :return: the transaction at the given index
+        """
         return self.transactions[trn-1]
 
-    #function to get the last tx height
-    def get_last_tx_height(self):
-        
-        #if there are no transactions
-        if len(self.transactions) == 0:
-            return 0
-
-        return self.transactions[len(self.transactions)-1]["number"]
-
-    #function to get the block count
     def get_block_count(self):
+        """ 
+        Function to get block count
+
+        :return: the number of blocks in chain
+        """
+
         #if there are no blocks
         if len(self.chain.blocks) == 0:
             return 0
 
         return len(self.chain.blocks)
 
-    #function to get the block by hash
     def get_block(self, hash):
+        """ 
+        Function to get the block by hash
+
+        :param hash: the hash to get
+
+        :return: the block with the given hash
+        """
         #loop through each block
         for block in self.chain.blocks:
             #if block matches, return hash
@@ -80,9 +105,12 @@ class State:
 
         return None
 
-    #function to get the block hashes
     def get_block_hashes(self):
+        """ 
+        Function to get the block hashes
 
+        :return: block hashes from the chain
+        """
         block_hashes = []
 
         #loop through blocks
@@ -92,12 +120,21 @@ class State:
 
         return block_hashes
 
-    #function to get latest hash
     def get_latest_hash(self):
+        """ 
+        Function to get latest hash
+
+        :return: latest hash
+        """
+
         return self.chain.blocks[-1].hash if len(self.chain.blocks) > 0 else "0"
 
-    #function to insert block
     def insert_block(self, block):
+        """ 
+        Function to insert block
+
+        :param block: block to insert
+        """
 
         #increment local count
         self.local_block_count += 1
@@ -125,8 +162,11 @@ class State:
         #reset mining balances
         self.database.reset_mining_tables()
 
-    #print transactions
     def print_txs(self):
+        """ 
+        Function print transactions
+        """
+
         for tx in self.transactions:
             if tx["approved"] and tx["approve_tx"] != 0:
                 print(str(tx["number"])+" ("+str(datetime.fromtimestamp(tx["timestamp"]))+") : "+ tx["from_username"]+" -> "+tx["to_username"]+" (Approval TX "+str(tx["approve_tx"])+")")
@@ -135,24 +175,43 @@ class State:
 
         self.write_txs_to_file()
 
-    #calculates the balance of a user
     def get_balance(self, address, actual=True):
+        """ 
+        Function print transactions
+        """
         return self.database.get_balance(address, actual)
 
-    #function to write to file
     def write_txs_to_file(self):
+        """ 
+        Function to write transactions to file
+        """
+
         jsonString = json.dumps(self.transactions)
         jsonFile = open("txs/"+str(self.port)+"_txs.json", "w")
         jsonFile.write(jsonString)
         jsonFile.close()
 
-    #function to perform transfers checks
     def perform_check_transfers(self, block):
+        """ 
+        Function to perform checks for transfers
+
+        :param block: block to perform its transfers
+
+        :return: if successful
+        """
+
         #for each transfer
         return self.database.check_transfers(block.hashed_content.transactions)
 
-    #function to perform transfers checks in a past block
     def perform_check_transfers_past_block(self, block, block_index):
+        """ 
+        Function to perform checks for transfers in a past block
+
+        :param block: block to perform its transfers
+        :param block_index: the index of a block
+
+        :return: if successful
+        """
         #get balances at the previous block index
         past_balances = self.chain.get_balances_at_block(block_index-1)
 
@@ -189,22 +248,40 @@ class State:
 
         return True
 
-    #function to perform transfers
     def perform_transfers(self, block):
+        """ 
+        Function to perform transforms
+
+        :param block: block to perform its transfers
+        """
+
         #for each transfer
         for tx in block.hashed_content.transactions:
             #make transfer
             self.database.transfer(tx)
 
-    #function to check if synced
     def is_synced(self):
+        """ 
+        Function to check if synced
+
+        :return: if synced
+        """
+
         return self.local_block_count == self.network_block_count
 
-    #function to add pending tx
     def add_pending_tx(self, pending_tx):
+        """ 
+        Function to add a pending transaction
+
+        :param pending_tx: pending transaction to add
+        """
         self.transactions.append(pending_tx)
 
-    #function to set public key
     def set_pk(self, pk):
+        """ 
+        Function to set a public key
+
+        :param pk: public key to set
+        """
         self.public_key = pk
 

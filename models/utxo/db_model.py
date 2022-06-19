@@ -5,6 +5,11 @@ import threading
 
 class Database:
     def __init__(self, port):
+        """
+        Class initialiser
+
+        :param port: the port used to name the database file
+        """
         self.database = sqlite3.connect('dbs/'+str(port)+'_db_utxo.db', check_same_thread=False)
         self.database.execute("PRAGMA foreign_keys = ON;")
 
@@ -18,24 +23,46 @@ class Database:
         self.db_safe_execute("create table if not exists unspent_txs (tx varchar(64) unique REFERENCES txs(hash) not null)")
         self.db_safe_execute("create table if not exists mining_unspent_txs (tx varchar(64) unique REFERENCES mining_txs(hash) not null)")
 
-    #function to execute commands with lock
     def db_safe_execute(self, command):
+        """
+        Function to execute commands with lock
+
+        :param command: command to execute
+
+        :return: the result from the execution
+        """
+
         try:
             self.lock.acquire(True)
             return self.cursor.execute(command)
         finally:
             self.lock.release()
 
-    #function to get balance of account
     def get_balance(self, account, actual=True):
+        """
+        Function to get balance of account
+
+        :param account: account to get its balance
+        :param actual: if to use the actual or mining table
+        
+        :return: the balance of the given account
+        """
+
         unspent_table_name = "unspent_txs" if actual else "mining_unspent_txs"
         txs_table_name = "txs" if actual else "mining_txs"
         #get balance
         balance = self.db_safe_execute("SELECT count(*) from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx = "+txs_table_name+".hash and "+txs_table_name+".to_ac = '"+account+"'").fetchall()[0][0]
         return balance
 
-    #function to get balance of account
     def get_balances(self, actual=True):
+        """
+        Function to get balances of accounts
+
+        :param actual: if to use the actual or mining table
+        
+        :return: all the balances of the either the actual or mining table
+        """
+
         unspent_table_name = "unspent_txs" if actual else "mining_unspent_txs"
         txs_table_name = "txs" if actual else "mining_txs"
         unspent_txs = self.db_safe_execute("select "+txs_table_name+".to_ac,"+unspent_table_name+".tx from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx="+txs_table_name+".hash group by "+txs_table_name+".to_ac").fetchall()
@@ -53,8 +80,16 @@ class Database:
 
         return balances_dict
 
-    #function to execute a transfer if possible
     def transfer(self,tx, actual=True):
+        """
+        Function to execute a transfer if possible
+
+        :param tx: tx to execute
+        :param actual: if to use the actual or mining table
+
+        :return: whether successful
+        """
+
         #get from
         from_ac = tx.hashed_content.signed_content.from_ac
         #get to
@@ -82,8 +117,16 @@ class Database:
             self.db_safe_execute("update "+unspent_table_name+" set tx='"+tx.hash+"' where tx='"+spent_tx+"'")
 
 
-    #function to check if a transfer is possible
     def check_transfer(self, tx, actual=True):
+        """
+        Function to check if a transfer is possible
+
+        :param tx: tx to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
+
         #get from 
         from_ac = tx.hashed_content.signed_content.from_ac
         #get to
@@ -102,8 +145,15 @@ class Database:
         
         return True
 
-    #function to check if set of transfers are possible
     def check_transfers(self, txs, actual=True):
+        """
+        Function to check if set of transfers are possible
+
+        :param txs: txs to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
 
         balances = self.get_balances(actual)
         #for each tx
@@ -132,8 +182,13 @@ class Database:
 
         return True
 
-    #function to print balances
     def print_balances(self, actual=True):
+        """
+        Function to print balances
+
+        :param actual: if to use the actual or mining table
+        """
+
         unspent_table_name = "unspent_txs" if actual else "mining_unspent_txs"
         txs_table_name = "txs" if actual else "mining_txs"
         balances = self.db_safe_execute("select "+txs_table_name+".to_ac,count(*) from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx="+txs_table_name+".hash group by "+txs_table_name+".to_ac").fetchall()
@@ -142,18 +197,36 @@ class Database:
 
     #function to print unspent txs
     def print_unspent_txs(self, account, actual=True):
+        """
+        Function to print unspent transactions
+
+        :param account: account to get its unspent txs
+        :param actual: if to use the actual or mining table
+        """
+
         unspent_table_name = "unspent_txs" if actual else "mining_unspent_txs"
         txs_table_name = "txs" if actual else "mining_txs"
         unspent_txs = self.db_safe_execute("select "+unspent_table_name+".tx from "+unspent_table_name+" inner join "+txs_table_name+" where "+unspent_table_name+".tx="+txs_table_name+".hash and "+txs_table_name+".to_ac = '"+account+"'").fetchall()
         for tx in unspent_txs:
             print(tx[0])
 
-    #function to print all txs
     def print_all_txs(self, actual=True):
+        """
+        Function to print all transactions
+
+        :param actual: if to use the actual or mining table
+        """
+
         txs_table_name = "txs" if actual else "mining_txs"
         print(self.db_safe_execute("select * from "+txs_table_name).fetchall())
 
     def print_mining_tables(self, sender):
+        """
+        Function to print mining txs
+
+        :param sender: the account to print transactions for
+        """
+
         all_txs = self.db_safe_execute("select * from mining_txs").fetchall()
         print("all txs")
         for tx in all_txs:
@@ -165,15 +238,22 @@ class Database:
 
         self.print_unspent_txs(sender, False)
 
-    #function to reset mining balances
     def reset_mining_tables(self):
+        """
+        Function to reset mining balances
+        """
+
         self.db_safe_execute("delete from mining_unspent_txs")
         self.db_safe_execute("delete from mining_txs")
         self.db_safe_execute("insert into mining_txs select * from txs")
         self.db_safe_execute("insert into mining_unspent_txs select * from unspent_txs")
 
-    #function to remove txs for replacing block
     def remove_txs(self, txs):
+        """
+        Function to remove txs for replacing block
+
+        :param txs: transactions to remove
+        """
 
         sql_clause_txs = "("
         sql_clause_spent_txs = "("
@@ -189,9 +269,12 @@ class Database:
         self.db_safe_execute("delete from unspent_txs where tx in "+sql_clause_spent_txs)
         self.db_safe_execute("delete from txs where hash in "+sql_clause_txs)
 
-    #function to add unspect txs for replacing block
-    def add_unspent_txs(self, unspent_balances):
+    def add_unspent_txs(self, unspent_txs):
+        """
+        Function to add unspect txs for replacing block
 
-        for balance in unspent_balances:
-            for tx in unspent_balances[balance]:
+        :param unspent_txs: unspent transactions to add
+        """
+        for balance in unspent_txs:
+            for tx in unspent_txs[balance]:
                 self.db_safe_execute("insert into unspent_txs (tx) values ('"+tx+"')")

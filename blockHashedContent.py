@@ -6,6 +6,12 @@ import config as config
 
 class BlockHashedContent:
     def __init__(self, prev_hash):
+        """
+        Class initialiser
+
+        :param prev_hash: previous hash
+        """
+
         self.nonce = 0
         self.prev_hash = prev_hash
         self.timestamp = None
@@ -13,6 +19,12 @@ class BlockHashedContent:
     
     @classmethod
     def load(cls, block):
+        """
+        Function to initialise an object (Another initialiser)
+
+        :param block: block to load data from
+        """
+
         new_hashed_content = cls(block["prev_hash"])
         new_hashed_content.nonce = block["nonce"]
         new_hashed_content.prev_hash = block["prev_hash"]
@@ -28,20 +40,35 @@ class BlockHashedContent:
 
         return new_hashed_content
 
-    #function to add a transaction
     def add_transaction(self, tx):
+        """
+        Function to add a transaction
+
+        :param tx: transaction to add
+        """
         self.transactions.append(tx)
 
-    #function to set transactions
     def add_pending_txs(self, txs):
+        """
+        Function to add pending transactions
+
+        :param txs: pending transactions to add
+        """
         self.transactions += txs
 
-    #function to clear txs
     def reset_txs(self):
+        """
+        Function to clear txs
+        """
         self.transactions.clear()
 
-    #returns a json representation of the txs in the block
     def get_txs_json(self):
+        """
+        Function to get a json representation of the txs in the block
+
+        :return: a json representation of the txs in the block
+        """
+
         txs = []
         #go through each tx and add its json representation to the list
         for tx in self.transactions:
@@ -49,8 +76,13 @@ class BlockHashedContent:
         
         return txs
 
-    #function to get content as a dict
     def get_hashed_content(self):
+        """
+        Function to get content as a dict
+
+        :return: block content as a dict
+        """
+
         return {
             "nonce": self.nonce,
             "prev_hash": self.prev_hash,

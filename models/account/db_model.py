@@ -5,33 +5,60 @@ import threading
 
 class Database:
     def __init__(self, port):
+        """
+        Class initialiser
+
+        :param port: the port used to name the database file
+        """
+
+        #create db
         self.database = sqlite3.connect('dbs/'+str(port)+'_db_account.db', check_same_thread=False)
         self.cursor = self.database.cursor()
-
         self.lock = threading.Lock()
 
         #create tables if they do not exist
         self.db_safe_execute("create table if not exists actual_balances (account varchar(42) primary key, balance int)")
         self.db_safe_execute("create table if not exists mining_balances (account varchar(42) primary key, balance int)")
 
-    #function to execute commands with lock
     def db_safe_execute(self, command):
+        """
+        Function to execute commands with lock
+
+        :param command: command to execute
+
+        :return: the result from the execution
+        """
         try:
             self.lock.acquire(True)
             return self.cursor.execute(command)
         finally:
             self.lock.release()
 
-    #function to get balance of account
     def get_balance(self, account, actual=True):
+        """
+        Function to get balance of account
+
+        :param account: account to get its balance
+        :param actual: if to use the actual or mining table
+        
+        :return: the balance of the given account
+        """
+
         #get balance
         table_name = "actual_balances" if actual else "mining_balances"
         balance = self.db_safe_execute("SELECT balance from "+table_name+" where account='"+account+"'").fetchall()
 
         return 0 if (len(balance) == 0) else balance[0][0]
 
-    #function to get balance of account
     def get_balances(self, actual=True):
+        """
+        Function to get balances of accounts
+
+        :param actual: if to use the actual or mining table
+        
+        :return: all the balances of the either the actual or mining table
+        """
+
         #get balance
         table_name = "actual_balances" if actual else "mining_balances"
         balances = self.db_safe_execute("SELECT * from "+table_name).fetchall()
@@ -43,13 +70,26 @@ class Database:
 
         return balances_dict
 
-    # function to check if record for account exists
     def account_row_exists(self, account, actual=True):
+        """
+        Function to check if record for account exists
+
+        :param account: account to check
+        :param actual: if to use the actual or mining table
+        
+        :return: boolean whether there exists a balance row for the given account
+        """
+
         table_name = "actual_balances" if actual else "mining_balances"
         return len(self.db_safe_execute("select 1 from "+table_name+" where account='"+account+"' limit 1").fetchall()) == 1
 
-    #function to increase balance of account
     def __increase_balance(self, account, actual=True):
+        """
+        Function to increase balance of account
+
+        :param account: account to increase its balance
+        :param actual: if to use the actual or mining table
+        """
         table_name = "actual_balances" if actual else "mining_balances"
 
         #if account exist, increment balance
@@ -60,8 +100,14 @@ class Database:
             self.db_safe_execute("insert into  "+table_name+" (account, balance) values ('"+account+"', 1)")
         self.database.commit()
 
-    #function to decrease balance of account
     def __decrease_balance(self, account, actual=True):
+        """
+        Function to decrease balance of account
+
+        :param account: account to decrease its balance
+        :param actual: if to use the actual or mining table
+        """
+
         table_name = "actual_balances" if actual else "mining_balances"
         #if exists
         if(self.account_row_exists(account, actual)):
@@ -75,8 +121,16 @@ class Database:
         raise Exception("Not enough balance to decrease")
 
 
-    #function to execute a transfer if possible
     def transfer(self, tx, actual=True):
+        """
+        Function to execute a transfer if possible
+
+        :param tx: tx to execute
+        :param actual: if to use the actual or mining table
+
+        :return: whether successful
+        """
+
         #get from 
         from_ac = tx.hashed_content.signed_content.from_ac
         #get to
@@ -92,8 +146,18 @@ class Database:
         if(from_ac != config.MINING_SENDER):
             self.__decrease_balance(from_ac, actual)
 
-    #function to check if a transfer is possible
+        return True
+
     def check_transfer(self, tx, actual=True):
+        """
+        Function to check if a transfer is possible
+
+        :param tx: tx to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
+
         #get from 
         from_ac = tx.hashed_content.signed_content.from_ac
         #get to
@@ -104,8 +168,15 @@ class Database:
 
         return True
 
-    #function to check if set of transfers are possible
     def check_transfers(self, txs, actual=True):
+        """
+        Function to check if set of transfers are possible
+
+        :param txs: txs to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
 
         balances = self.get_balances()
         #for each tx
@@ -133,8 +204,13 @@ class Database:
 
         return True
 
-    #function to revert txs
     def revert_txs(self, txs):
+        """
+        Function to revert txs
+
+        :param txs: txs to revert
+        """
+
         for tx in txs:
             #get from 
             from_ac = tx.hashed_content.signed_content.from_ac
@@ -148,15 +224,24 @@ class Database:
             if from_ac != config.MINING_SENDER:
                 self.__increase_balance(from_ac)
 
-    #function to print balances
     def print_balances(self, actual=True):
+        """
+        Function to print balances
+
+        :param actual: if to use the actual or mining table
+        """
+
         table_name = "actual_balances" if actual else "mining_balances"
         balances = self.db_safe_execute("select * from "+table_name).fetchall()
         for balance in balances:
             print(balance[0]+": "+str(balance[1]))
 
-    #function to reset mining balances
+    #function 
     def reset_mining_tables(self):
+        """
+        Function to reset mining balances
+        """
+
         self.db_safe_execute("delete from mining_balances")
         self.db_safe_execute("insert into mining_balances select * from actual_balances")
 

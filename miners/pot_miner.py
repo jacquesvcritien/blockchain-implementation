@@ -8,12 +8,21 @@ import time
 import hashlib
 import random
 
-#function to mine block
+
 def mine(miner, block, block_num_to_mine):
+    """
+    Function to mine block using PoT
+
+    :param miner: Miner class
+    :param block: block to mine
+    :param block_num_to_mine: block number to mine
+
+    :return: whether the mining was successful
+    """
 
     #start timer
     start_time = time.time()
-
+    #get previous hash
     prev_hash =  block.hashed_content.prev_hash
 
     #get next proposer
@@ -27,6 +36,7 @@ def mine(miner, block, block_num_to_mine):
     #check if to mine
     to_propose = check_if_proposer(miner.wallet.public_key, next_proposer)
 
+    #if the miner should propose the next block
     if to_propose:
         print("Proposing", block_num_to_mine)
 
@@ -34,9 +44,11 @@ def mine(miner, block, block_num_to_mine):
         milliseconds_now = int(round(time.time() * 1000))
         #get next block time by adding block time to the timestamp of the previous block
 
+        #get the time when the next block should be mined
         next_block_time = (int(config.BLOCK_TIME) + int(miner.chain.blocks[-1].hashed_content.timestamp)) if block_num_to_mine > 1 else (int(config.BLOCK_TIME) + milliseconds_now)
         # while(milliseconds_now < next_block_time):
         #     milliseconds_now = int(round(time.time() * 1000))
+        #calculate the time to sleep before mining the block
         time_to_sleep = ((next_block_time-milliseconds_now)/1000)
         if time_to_sleep > 0:
             time.sleep(time_to_sleep)
@@ -76,6 +88,15 @@ def mine(miner, block, block_num_to_mine):
         time.sleep(int(config.BLOCK_TIME)/2000)
 
 def calculate_value_for_pk(public_key, prev_hash):
+    """
+    Function to calculate the value for the public key
+
+    :param public_key: public key to calculate the value for
+    :param prev_hash: the previous hash to append for the calculation
+
+    :return: the value for the given parameters
+    """
+
     #concat public key with previp=ous hash
     to_hash = public_key+prev_hash
     #hash concetination
@@ -86,23 +107,47 @@ def calculate_value_for_pk(public_key, prev_hash):
     return val
 
 def get_peer_with_least_value(peers, prev_hash):
-    result = []
+    """
+    Function to get the peer with the smallest value
 
+    :param peers: list of peers
+    :param prev_hash: the previous hash
+
+    :return: the peer with the smallest value
+    """
+
+    #array to hold smallest value
+    result = []
+    #begin with a large value as max
     least_val = 9999999999999999
 
+    #loop through peers
     for peer in peers.peers:
+        #if the peer has a public key set
         if "public_key" in peer:
+            # calculate the value for that peer
             val = calculate_value_for_pk(peer["public_key"], prev_hash)
 
+            #if value is less than value, add to result 
             if val < least_val:
                 least_val = val
                 result = [peer]
 
     return result
 
-#function to check if miner should mine
 def check_if_proposer(public_key, next_proposers):
+    """
+    Function to check if miner should mine
+
+    :param public_key: public key to check
+    :param next_proposer: list of next proposers
+
+    :return: a bool indicating whether the passed public key should propose
+    """
+    
+    #loop through next proposers
     for next_proposer in next_proposers:
+        # if public key is in next proposers list
         if public_key == next_proposer["public_key"]:
             return True
 
@@ -111,6 +156,18 @@ def check_if_proposer(public_key, next_proposers):
 #function to handle incoming old block for pot
 #returns flag whether to verify and if verify replace
 def handle_old_block(protocol, new_block, our_block, our_index, payload_received, new_block_prev_hash):
+    """
+    function to handle incoming old block for PoT
+
+    :param protocol: the protocol used
+    :param new_block: the new block to handle
+    :param our_block: our block in our chain
+    :param our_index: the current block index
+    :param payload_received: the payload received
+    :param new_block_prev_hash: the previous hash
+
+    :return: flag whether to verify so that it can be replaced replace
+    """
 
     #get new block proposer
     block_proposer = new_block.get_block_proposer()
@@ -131,7 +188,7 @@ def handle_old_block(protocol, new_block, our_block, our_index, payload_received
             if(new_block_pot_value < our_block_pot_value):
                 print("Value lower than our block")
                 return True, None
-            #if new block pot value is larger than our block's pot value, send our block
+            #if new block pot value is larger than our block's pot value
             elif(new_block_pot_value > our_block_pot_value):
                 print("Value higher than our block")
                 # return False, [protocol.send_block("x", our_block)]

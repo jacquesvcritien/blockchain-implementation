@@ -9,7 +9,15 @@ import time
 
 #function to mine block
 def mine(miner, block, block_num_to_mine):
+    """
+    Function to mine block using PoW
 
+    :param miner: Miner class
+    :param block: block to mine
+    :param block_num_to_mine: block number to mine
+
+    :return: whether the mining was successful
+    """
     #start timer
     start_time = time.time()
 
@@ -48,9 +56,20 @@ def mine(miner, block, block_num_to_mine):
         miner.state.transactions.clear()
         return True
 
-#function to handle incoming old block for pot
 def handle_old_block(protocol, new_block, our_block, our_index, payload_received, new_block_prev_hash):
+    """
+    function to handle incoming old block for Po"
 
+    :param protocol: the protocol used
+    :param new_block: the new block to handle
+    :param our_block: our block in our chain
+    :param our_index: the current block index
+    :param payload_received: the payload received
+    :param new_block_prev_hash: the previous hash
+
+    :return: flag whether to verify so that it can be replaced replace and any messages to send to peers (our block if older)
+    """
+    
     #if new hash does not match, check if received block is older
     if payload_received["hash"] != our_block.hash:
         #if our block is older, hence the original

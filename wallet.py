@@ -4,6 +4,11 @@ import base64
 
 class Wallet:
     def __init__(self, username):
+        """
+        Class initialiser
+
+        :param username: the username of the user
+        """
         self.user_initials = username
         #check if wallet already exists for port
         filename = "wallets/"+username.lower()+"_wallet.txt"
@@ -33,8 +38,18 @@ class Wallet:
         print("Logged in with", str(self.public_key))
 
     def get_public_key(self):
+        """
+        Function to get the public key of the wallet
+
+        :return: the public key
+        """
         return self.public_key
 
     #function to sign a tx
     def sign_tx(self, tx):
+        """
+        Function to sign a transaction
+
+        :param tx: the transaction to sign
+        """
         tx.calculate_hash_sign(self)

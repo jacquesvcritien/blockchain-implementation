@@ -2,15 +2,26 @@ import config as config
 
 class Chain:
     def __init__(self):
+        """
+        Class initialiser
+        """
         self.blocks = []
         self.possible_blocks = {}
 
-    #function to add a block
     def add_block(self, block):
+        """
+        Function to add a block
+
+        :param block: block to add
+        """
         self.blocks.append(block)
 
-    #function to get prev hash
     def get_prev_hash(self):
+        """
+        Function to get the current prev hash
+
+        :return: the current previous hash
+        """
         #get number of blocks
         blocks_len = len(self.blocks)
         #if no blocks
@@ -19,16 +30,29 @@ class Chain:
         else:
             return self.blocks[blocks_len-1].hash
 
-    #get hash of block
     def get_block_hash(self, block_number):
+        """
+        Function to get the hash of block
+
+        :param block_number: the block number of the block whose hash is returned
+
+        :return: The hash of the block with the passed in block number
+        """
+
         #if block does not exist
         if len(self.blocks) < block_number:
             return -1
 
         return self.blocks[block_number-1].hash
 
-    #get block with a specific previous hash
     def get_block_with_prev_hash(self, prev_hash):
+        """
+        Function to get block with a specific previous hash
+
+        :param prev_hash: the previous hash of the block to get
+
+        :return: The block with the specified previous hash
+        """
 
         index = 0
         #loop through each block
@@ -42,16 +66,28 @@ class Chain:
 
         return None, -1
 
-    #function to check if hash is last hash
     def is_hash_last_block(self, hash):
+        """
+        Function to check if hash is last hash
+
+        :param hash: hash to check
+
+        :return: if passed in hash is the last hash
+        """
 
         if len(self.blocks) == 0:
             return False
 
         return hash == self.blocks[-1].hash
 
-    #replace block with given index 
     def replace_block(self, index, new_block, database):
+        """
+        Function to replace block with given index 
+
+        :param index: index to replace
+        :param new_block: new block to enter
+        :param database: reference to the database
+        """
 
         print("Replacing block", index+1)
 
@@ -72,8 +108,15 @@ class Chain:
         self.blocks = self.blocks[0:index+1]
 
     
-    #function to get balance at block
     def get_balances_at_block(self, block_index):
+        """
+        Function to get balance at block
+
+        :param block_index: block index of the block whose balances are obtained
+
+        :return: the balances at the given block index
+        """
+
         #init balance
         balances = {}
 
@@ -118,8 +161,11 @@ class Chain:
 
         return balances
 
-    #function to print chain
     def print_chain(self):
+        """
+        Function to print chain
+        """
+
         print()
         print()
 

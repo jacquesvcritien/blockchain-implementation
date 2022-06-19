@@ -33,19 +33,10 @@ protocol = Protocol(state)
 wallet = None
 miner = None
 
-def schedule_next_msg():
-    global peers
-    global ip
-    global port
-    global s
-
-    randtime = random.randint(500, 5000)
-    print("Sending in "+str(randtime)+"ms")
-    time.sleep(randtime/1000)
-    message = "Hello"
-    peers.broadcast_message(message)
-
 def check_sync():
+    """
+    Function to check if node is synced
+    """
     global state
     #syncronize
     while True:
@@ -54,6 +45,9 @@ def check_sync():
         time.sleep(5)
 
 def check_peers():
+    """
+    Function to check peers
+    """
     global peers
     #syncronize
     while True:
@@ -62,6 +56,9 @@ def check_peers():
         time.sleep(10)
 
 def init():
+    """
+    Function which runs the node
+    """
     global peers
     global ip
     global port
@@ -127,25 +124,35 @@ def init():
 
 init()
 
-
-#check balance
 def check_balance():
+    """
+    Function to check the balance
+    """
+
     global state
     global wallet
     print(state.database.get_balance(wallet.public_key))
 
 #shows help
 def show_help():
+    """
+    Function to print help
+    """
+
     print("------ HELP ------") 
     print("check_balance: Checks the balance")
-    print("send_wbe: Sends WBE")
+    print("send_sbb: Sends sbb")
     print("print_balances: Prints balances")
     print("print_chain: Prints the chain")
     print("print_unspent_txs: Prints unspent txs")
     print("help: Prints help")
 
-#sends wbe
-def send_wbe():
+#sends sbb
+def send_sbb():
+    """
+    Function to send sbb
+    """
+
     global state
     global wallet
 
@@ -200,29 +207,49 @@ def send_wbe():
     peers.broadcast_message(send_new_tx_msg)
 
 def print_txs():
+    """
+    Function to print transactions
+    """
     state.print_txs()
 
 #function to print balances
 def print_balances():
+    """
+    Function to print balances
+    """
     state.database.print_balances(False)
 
 #function to print chain
 def print_chain():
+    """
+    Function to print chain
+    """
     state.chain.print_chain()
 
 def print_unspent_txs():
+    """
+    Function to print unspent txs
+    """
     global wallet
     state.database.print_unspent_txs(wallet.public_key, False)
 
 def print_txs():
+    """
+    Function to print transactions
+    """
     state.database.print_all_txs(False)
 
-#function to handle user actions
 def handleUserActions(command):
+    """
+    Function to handle user input
+
+    :param command: command entered by the user
+    """
+
     if command == "check_balance":
         check_balance()
-    elif command == "send_wbe":
-        send_wbe()
+    elif command == "send_sbb":
+        send_sbb()
     elif command == "help":
         show_help()
     elif command == "print_txs":

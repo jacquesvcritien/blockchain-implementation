@@ -8,27 +8,44 @@ import config as config
 
 class Block:
     def __init__(self, prev_hash):
+        """
+        Class initialiser
+
+        :param prev_hash: previous hash
+        """
         self.hashed_content = BlockHashedContent(prev_hash)
         self.hash = ""
 
     @classmethod
     def load(cls, hashed_content, hash):
+        """
+        Function to initialise an object (Another initialiser)
+
+        :param hashed_content: hashed content to add
+        :param hash: hashed block hash
+        """
+        
         new_block = cls(hashed_content["prev_hash"])
         new_block.hashed_content = BlockHashedContent.load(hashed_content)
         new_block.hash = hash
         return new_block
 
-    #function to increase nonce
     def increase_nonce(self):
+        """
+        Function to increase nonce
+        """
         self.hashed_content.nonce += 1
 
-    #function to reset nonce
     def reset_nonce(self):
+        """
+        Function to decrease nonce
+        """
         self.hashed_content.nonce = 0
 
-    #function to calculate hash of block
     def calculate_hash(self):
-
+        """
+        Function to calculate hash
+        """
         #get content
         content = self.hashed_content.get_hashed_content()
         payload = json.dumps(content)
@@ -36,9 +53,15 @@ class Block:
         #calculate hash
         self.hash = get_hash(payload)
 
-    #function to verify block
-    # new_block indicates whether it is a new block or an old block being verified. If it is an old block, transfers should not be checked (they are checked later)
     def verify(self, database, new_block):
+        """
+        Function to verify block
+
+        :param database: reference to database
+        :param new_block: new block to verify
+
+        :return: whether successful
+        """
 
         #get content
         content = self.hashed_content.get_hashed_content()
@@ -77,6 +100,11 @@ class Block:
 
     #function to get block proposer
     def get_block_proposer(self):
+        """
+        Function to get block proposer
+
+        :return: address of block proposer
+        """
         #go through each tx
         for tx in self.hashed_content.transactions:
             #if sender is 0

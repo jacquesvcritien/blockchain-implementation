@@ -7,11 +7,24 @@ from txHashedContent import TxHashedContent
 
 class Transaction:
     def __init__(self, from_user, to_user, spent_tx=None):
+        """
+        Class initialiser
+
+        :param from_user: the transaction's sender
+        :param to_user: the transaction's receiver
+        :param spent_tx: if a spent transaction for PoT
+        """
         self.hashed_content = TxHashedContent(from_user, to_user, spent_tx)
         self.hash = ""
 
     @classmethod
     def load(cls, hashed_content, hash):
+        """
+        Function to load a transaction
+
+        :param hashed_content: hashed content to add
+        :param hash: hashed block hash
+        """
         #init tx
         spent_tx = None if config.DB_MODEL == "account" else hashed_content.signed_content.spent_tx
         new_tx = cls(hashed_content.signed_content.from_ac, hashed_content.signed_content.to_ac, spent_tx)
@@ -22,15 +35,16 @@ class Transaction:
 
         return new_tx
 
-    #function to calculate hash
     def calculate_hash_sign(self, wallet):
+        """
+        Function to calculate the hash of a payload
+
+        :param wallet: wallet to sign with
+        """
 
         #stringify signed content of tx
         payload = json.dumps(self.hashed_content.signed_content.get_signed_content())
 
-        # #hash the payload
-        # content_hash = hashlib.sha256(payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
-         
         #get signing key
         priv_key = bytes.fromhex(wallet.private_key)
         sk = ecdsa.SigningKey.from_string(priv_key, curve=ecdsa.SECP256k1)
@@ -44,9 +58,13 @@ class Transaction:
         payload = json.dumps(tx)
         #hash the payload
         self.hash = hashlib.sha256(payload.encode(config.BYTE_ENCODING_TYPE)).hexdigest()
-        # print("TX hash", self.hash)
         
     def verify(self):
+        """
+        Function to verify a transaction
+
+        :return: if successful
+        """
 
         #verify tx hash to make sure signature did not change
         tx_hash = self.hash
@@ -83,8 +101,13 @@ class Transaction:
         # print("Block verified successful") 
         return True
 
-    #returns a json representation
     def to_json(self):
+        """
+        Function to convert transaction to json
+
+        :return: json representation of transaction
+        """
+
         return {
             "hash": self.hash,
             "hashedContent": self.hashed_content.get_hashed_content()

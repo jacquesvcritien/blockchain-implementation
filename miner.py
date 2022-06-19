@@ -8,6 +8,16 @@ from helper_utils import write_to_file
 
 class Miner:
     def __init__(self, wallet, chain, state, protocol, peers):
+        """
+        Class initialiser
+
+        :param wallet: a reference to the initialised wallet
+        :param chain: a reference to the initialised chain
+        :param state: a reference to the initialised state
+        :param protocol: the protocol to be used
+        :param peers: the miner's peers
+        """
+        
         self.wallet = wallet
         self.chain = chain
         self.state = state
@@ -15,46 +25,11 @@ class Miner:
         self.peers = peers
         self.logFile = open('logs/mine_log_'+str(state.port)+'.txt', 'w')
 
-    # #function to mine block
-    # def mine(self, block, block_num_to_mine):
-
-    #     #start timer
-    #     start_time = time.time()
-
-    #     #needed hash substring not in content hash
-    #     while(not block.hash.startswith(get_needed_hash_substring(config.HASHING_CONSECUTIVE_ZEROS))):
-
-    #         #if state transactions pool > previous block transactions, reset nonce
-    #         if(len(self.state.transactions) > len(block.hashed_content.transactions)-1):
-    #             #reset nonce
-    #             block.reset_nonce()
-    #             #reset txs
-    #             block.hashed_content.reset_txs()
-    #             #add mining_tx
-    #             block.hashed_content.add_transaction(self.current_mining_tx)
-    #             #add pending txs
-    #             block.hashed_content.add_pending_txs(self.state.transactions)
-            
-    #         #if not synced or block is found, halt mining
-    #         if not self.state.is_synced() or self.state.local_block_count >= block_num_to_mine:
-    #             return False
-
-    #         #increase nonce 
-    #         block.increase_nonce()
-    #         #calculate hash
-    #         block.calculate_hash()
-
-    #     write_to_file("Found hash "+block.hash+" for block "+str(len(self.chain.blocks)+1), self.logFile)
-    #     write_to_file("--- "+str(time.time() - start_time)+" seconds ---", self.logFile)
-
-    #     if self.state.is_synced() and block_num_to_mine > self.state.local_block_count:
-    #         #clear pending txs
-    #         self.state.transactions.clear()
-    #         return True
-
-
-    #function to mine
     def run(self):
+        """
+        The miner's main runner function
+        """
+        
         while(True):
             #if synced
             if self.state.is_synced():
@@ -91,8 +66,11 @@ class Miner:
             else:
                 self.state.synchronize(self.protocol, self.peers)
 
-    #function to add a transaction
     def add_transaction(self):
+        """
+        Function to add the first miner transaction to a block 
+        """
+
         #create a tx to the user himself/herself
         spent_tx = None if config.DB_MODEL == "account" else config.INITIAL_HASH
         tx = Transaction(config.MINING_SENDER, self.wallet.public_key, spent_tx)

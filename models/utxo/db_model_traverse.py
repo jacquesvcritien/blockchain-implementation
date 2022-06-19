@@ -5,18 +5,28 @@ from block import Block
 
 class Database:
     def __init__(self, chain, pending_txs):
-        self.chains = {
-            "actual": chain,
-            "mining": copy.deepcopy(chain)
-        }
+        """
+        Class initialiser
+
+        :param chain: chain to set
+        :param pending_txs: pending transactions
+        """
+
         self.chain = chain
         self.pending_txs = pending_txs
 
-    #function to get balance of account
     def get_balance(self, account, actual=True):
+        """
+        Function to get balance of account
+
+        :param account: account to get its balance
+        :param actual: if to use the actual or mining table
+        
+        :return: the balance of the given account
+        """
+
         chain_type = "actual" if actual else "mining"
         unspent_txs = []
-        # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
             #if block is confirmed
             if block.hashed_content.timestamp != None:
@@ -53,11 +63,18 @@ class Database:
 
         return len(unspent_txs)
 
-    #function to get unspent txs of account
     def get_unspent_txs(self, account, actual=True):
+        """
+        Function to get unspent txs of account
+
+        :param account: account to get its unspent txs
+        :param actual: if to use the actual or mining table
+        
+        :return: unspent txs of account
+        """
+
         chain_type = "actual" if actual else "mining"
         unspent_txs = []
-        # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
             #if block is confirmed
             if block.hashed_content.timestamp != None:
@@ -96,9 +113,16 @@ class Database:
 
     #function to get balance of account
     def get_balances(self, actual=True):
+        """
+        Function to get balances of accounts
+
+        :param actual: if to use the actual or mining table
+        
+        :return: all the balances of the either the actual or mining table
+        """
+
         chain_type = "actual" if actual else "mining"
         balances = {}
-        # for block in self.chains[chain_type].blocks:
         for block in self.chain.blocks:
             #if block is confirmed
             if block.hashed_content.timestamp != None:
@@ -152,8 +176,15 @@ class Database:
         if tx.hashed_content.signed_content.spent_tx not in unspent_txs and from_ac != config.MINING_SENDER:
             return False
 
-    #function to check if a transfer is possible
     def check_transfer(self, tx, actual=True):
+        """
+        Function to check if a transfer is possible
+
+        :param tx: tx to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
 
         chain_type = "actual" if actual else "mining"
 
@@ -175,9 +206,16 @@ class Database:
         
         return True
 
-    #function to check if set of transfers are possible
     def check_transfers(self, txs, actual=True):
+        """
+        Function to check if set of transfers are possible
 
+        :param txs: txs to check
+        :param actual: if to use the actual or mining table
+
+        :return: whether possible
+        """
+        
         balances = self.get_balances(actual)
         #for each tx
         for tx in txs:
@@ -205,28 +243,43 @@ class Database:
 
         return True
 
-    #function to print balances
     def print_balances(self, actual=True):
+        """
+        Function to print balances
+
+        :param actual: if to use the actual or mining table
+        """
+
         balances = self.get_balances(actual)
         for balance in balances:
             print(balance+": "+str(len(balances[balance])))
 
-    #function to print unspent txs
     def print_unspent_txs(self, account, actual=True):
+        """
+        Function to print unspent transactions
+
+        :param account: account to get its unspent txs
+        :param actual: if to use the actual or mining table
+        """
         unspent_txs = self.get_unspent_txs(account, actual)
         for unspent_tx in unspent_txs:
             print(unspent_tx)
 
 
-    #function to reset mining balances
     def reset_mining_tables(self):
-        # self.chains["mining"] = copy.deepcopy(self.chains["actual"])
+        """
+        This is not used in this case
+        """
         return
 
-    #function to remove txs for replacing block
     def remove_txs(self, txs):
-        self.reset_mining_tables()
+        """
+        This is not used in this case
+        """
+        return 
 
-    #function to add unspect txs for replacing block
     def add_unspent_txs(self, unspent_balances):
-        self.reset_mining_tables()
+        """
+        This is not used in this case
+        """
+        return

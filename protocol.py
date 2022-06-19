@@ -10,10 +10,25 @@ import json
 
 class Protocol:
     def __init__(self, state):
+        """
+        Class initialiser
+
+        :param state: a reference to the initialised state
+        """
+
         self.state = state
 
-    #function to process a message
     def process_message(self, message, peers, sender_ip, sender_port):
+        """
+        Function to process a message
+
+        :param message: the message sent
+        :param peers: a reference to peers
+        :param sender_ip: the sender's ip
+        :param sender_port: the sender's port
+
+        :return: list of messages to broadcast to peers
+        """
 
         #check command size
         if chr(message[0]) != '2':
@@ -79,8 +94,13 @@ class Protocol:
             return [None]
 
 
-    #function to get block count from neighbours
     def get_block_count(self):
+        """
+        Function to get block count from neighbours
+
+        :return: message to send to peers to get block count
+        """
+
         #construct msg
         message = bytearray()
         message += "a".encode(config.BYTE_ENCODING_TYPE)
@@ -91,8 +111,12 @@ class Protocol:
         #create message
         return self.create_message(message)
 
-    #function to get block hashes from neighbours
     def get_block_hashes(self):
+        """
+        Function to get block hashes from neighbours
+
+        :return: message to send to peers
+        """
         #construct msg
         message = bytearray()
         message += "b".encode(config.BYTE_ENCODING_TYPE)
@@ -104,12 +128,25 @@ class Protocol:
         return self.create_message(message)
 
     def __empty_payload(self):
+        """
+        Function to send emoty payload
+
+        :return: message to send to peers
+        """
+
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "empty_content")
         return fn() 
 
-    #function to request block from neighbours
     def request_block(self, hash):
+        """
+        Function to request block from peers 
+
+        :param hash: the hash of the block to obtain
+
+        :return: message to send to peers
+        """
+
         #construct msg
         message = bytearray()
         message += "r".encode(config.BYTE_ENCODING_TYPE)
@@ -119,14 +156,28 @@ class Protocol:
         #create message
         return self.create_message(message)
 
-    #function to create message for request block message
     def __request_block_payload(self, hash):
+        """
+        Function to create message for request block message
+
+        :param hash: the hash of the block to obtain
+
+        :return: payload for request block message
+        """
+
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "request_block")
         return fn(hash)
 
-    #function to send new block to neighbours
     def new_block(self, block):
+        """
+        Function to send new block to neighbours
+
+        :param block: new block to send
+
+        :return: message to send to peers
+        """
+
         #construct msg
         message = bytearray()
         message += "z".encode(config.BYTE_ENCODING_TYPE)
@@ -136,11 +187,15 @@ class Protocol:
         #create message
         return self.create_message(message)
 
-    def get_highest_tx_num(self):
-        return self.create_message(str.encode("h"))
-
-    #function to create a message to be sent
     def create_message(self, message):
+        """
+        Function to create a message to be sent
+
+        :param message: message to send
+
+        :return: message to send to peers
+        """
+
         #calculate message length
         msg_length = len(message)
         #switch to 2 bytes
@@ -158,14 +213,28 @@ class Protocol:
 
         return msg
 
-    #function to create payload for send tx message
     def __tx_payload(self, transaction):
+        """
+        Function to create payload for send tx message
+
+        :param transaction: transaction to send
+
+        :return: the payload to send 
+        """
+
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", config.DB_MODEL+"_tx_content")
         return fn(transaction)
 
-    #function to send tx
     def send_new_tx(self, transaction):
+        """
+        Function to create message to send a transaction
+
+        :param transaction: transaction to send
+
+        :return: message to send to peers
+        """
+
         #prepare message to send
         new_tx_msg = bytearray()
         #add initial character
@@ -177,8 +246,13 @@ class Protocol:
         msg_to_send = self.create_message(new_tx_msg)
         return msg_to_send
 
-    #function to send tx
     def get_peers_pks(self):
+        """
+        Function to get peers' public keys
+
+        :return: message to send to peers
+        """
+
         #prepare message to return
         msg_to_send = bytearray()
         #add initial character
@@ -190,35 +264,13 @@ class Protocol:
         msg_to_send = self.create_message(msg_to_send)
         return msg_to_send
 
-    def send_new_tx_bytes(self, transaction):
-        
-        #construct transaction message
-        trn = transaction["number"]
-        trtime = transaction["timestamp"]
-        approved = transaction["approved"]
-        approve_tx = transaction["approve_tx"]
-
-        new_tx_msg = bytearray()
-        new_tx_msg += "n".encode(config.BYTE_ENCODING_TYPE)
-        new_tx_msg += trn.to_bytes(2, byteorder='big')
-        new_tx_msg += transaction["from_username"].encode(config.BYTE_ENCODING_TYPE)
-        new_tx_msg += transaction["to_username"].encode(config.BYTE_ENCODING_TYPE)
-        new_tx_msg += trtime.to_bytes(4, byteorder='big')
-        new_tx_msg += approved.to_bytes(1, byteorder='big')
-        new_tx_msg += approve_tx.to_bytes(2, byteorder='big')
-
-        return self.create_message(new_tx_msg)
-
-
-    def get_tx(self, trn):
-        new_tx_msg = bytearray()
-        new_tx_msg += "g".encode(config.BYTE_ENCODING_TYPE)
-        new_tx_msg += trn.to_bytes(2, byteorder='big')
-        return self.create_message(new_tx_msg)
-
-
-    #function to handle get block count message
     def __handle_get_block_count(self):
+        """
+        Function to handle get block count message
+
+        :return: message to send to peers
+        """
+
         #write log
         write_to_file("GOT GET BLOCK COUNT MSG", self.state.logFile)
         
@@ -235,8 +287,13 @@ class Protocol:
         msg_to_send = self.create_message(highest_block_res)
         return msg_to_send
 
-    #function to handle block count response message
     def __handle_block_count_response(self, cmd):
+        """
+        Function to handle block count response message
+
+        :return: message to send to peers
+        """
+
         #write log
         write_to_file("GOT BLOCK COUNT RESPONSE MSG", self.state.logFile)
 
@@ -254,14 +311,23 @@ class Protocol:
 
         return None
 
-    #function to create message for block count return
     def __get_block_count_res_payload(self, block_count):
+        """
+        Function to get payload for a get block count message 
+
+        :return: payload for a get block count message 
+        """
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "get_block_count_res")
         return fn(block_count)
 
-    #function to handle get block hashes message
     def __handle_get_block_hashes(self):
+        """
+        Function to handle get block hashes message
+
+        :return: message to send to peers
+        """
+
         #write log
         write_to_file("GOT GET BLOCK HASHES MSG", self.state.logFile)
         
@@ -277,14 +343,23 @@ class Protocol:
         msg_to_send = self.create_message(block_hashes_res)
         return msg_to_send
 
-    #function to create message for block hashes return
     def __get_block_hashes_res_payload(self, hashes):
+        """
+        Function to get payload for a get block hashes message 
+
+        :return: payload for a get block count message 
+        """
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "get_block_hashes_res")
         return fn(hashes)
 
-    #function to handle block hashes response message
     def __handle_block_hashes_response(self, cmd):
+        """
+        Function to handle get block hashes message response
+
+        :return: message to send to peers
+        """
+
         #write log
         write_to_file("GOT BLOCK HASHES RESPONSE MSG", self.state.logFile)
 
@@ -313,8 +388,12 @@ class Protocol:
 
         return messages_to_send
 
-    #function to handle request block message
     def __handle_request_block(self, cmd):
+        """
+        Function to handle request block message
+
+        :return: message to send to peers
+        """
         #write log
         write_to_file("GOT REQUEST BLOCK MSG", self.state.logFile)
 
@@ -335,14 +414,24 @@ class Protocol:
         msg_to_send = self.create_message(request_block_res)
         return msg_to_send
 
-    #function to create message for request block return
     def __block_payload(self, block):
+        """
+        Function to create payload for request block message
+
+        :return: payload for request block message
+        """
+
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "block_content")
         return fn(block)
 
-    #function to send a block
     def send_block(self, letter, block):
+        """
+        Function to send a block message
+
+        :return: message to send to peers
+        """
+
         #prepare message to send
         block_msg = bytearray()
         #add initial character
@@ -354,8 +443,12 @@ class Protocol:
         msg_to_send = self.create_message(block_msg)
         return msg_to_send
 
-    #function to handle new block message
     def __handle_new_block(self, cmd, new_block):
+        """
+        Function to handle new block message
+
+        :return: message to send to peers
+        """
         #write log
         write_to_file("GOT NEW BLOCK MSG", self.state.logFile)
 
@@ -416,58 +509,16 @@ class Protocol:
                 #reset counts
                 self.state.local_block_count = len(self.state.chain.blocks)
                 self.state.network_block_count = len(self.state.chain.blocks)
-                
-
-        # #this is a flag which holds whether the received block is older than our block with the same prev hash
-        # older_block = False
-
-        # #if not a new block
-        # if not new_block:
-        #     #if new hash does not match, check if received block is older
-        #     if payload_received["hash"] != our_block.hash:
-        #         #if our block is older, hence the original
-        #         if int(our_block.hashed_content.timestamp) < int(payload_received["hashedContent"]["timestamp"]):
-        #             print("We found an older block on our chain with the same previous hash", new_block_prev_hash)
-        #             #send our block to the chain
-        #             return self.send_block("x", our_block)
-        #         #otherwise we need to verify
-        #         else:
-        #             older_block = True
-        #             print("Need to check hash", payload_received["hash"])
-
-        # #if it is a completely new block or an older block which needs to be verified
-        # if older_block or new_block:
-        #     #initialise block
-        #     block = Block.load(payload_received["hashedContent"], payload_received["hash"])
-        #     #verify block
-        #     verified = block.verify(self.state.database, new_block)
-
-        #     #if not verified
-        #     if not verified:
-        #         print("Block not verified", payload_received["hashedContent"], payload_received["hash"])
-        #         return
-
-        #     #if is a completely new block
-        #     if new_block:
-        #         #add block to chain
-        #         self.state.insert_block(block)
-        #     #otherwise we need to replace the block with the same previous hash at the index obtained
-        #     else:
-        #         #first we need to check if the block transfers were possible in that past block
-        #         transfers_acceptable = self.state.perform_check_transfers_past_block(block, our_index)        
-        #         print("Replacing block with hash", block.hash)
-        #         self.state.chain.replace_block(our_index, block, self.state.database)
-
-        #     #perform block transfers
-        #     self.state.perform_transfers(block)
-
-        #     #reset mining tables
-        #     self.state.database.reset_mining_tables()
 
         return [None]
 
-    #function to handle new transaction message
     def __handle_new_tx(self, cmd):
+        """
+        Function to handle new transaction message
+
+        :return: message to send to peers
+        """
+
         write_to_file("GOT NEW TX MSG", self.state.logFile)
 
         #get function from module
@@ -500,16 +551,23 @@ class Protocol:
         #append tx to txs pool
         self.state.add_pending_tx(tx)
 
-    #function to create payload for  discover message
     def __discover_payload(self, transaction):
+        """
+        Function to create payload for a discover message
+
+        :return: payload for a discover message
+        """
         #get function from module
         fn = get_module_fn("encoding."+config.PAYLOAD_ENCODING+"_encoding", "discover_content")
         return fn(transaction)
 
-
-
-    #function to handle new pk message
     def __handle_pk(self, cmd):
+        """
+        Function to handle new public key message
+
+        :return: public key
+        """
+
         write_to_file("GOT PK MSG", self.state.logFile)
 
         ##get function from module
